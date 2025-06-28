@@ -1,0 +1,6 @@
+requests==2.32.4
+kafka-python==2.2.11
+APScheduler==3.11.0
+tenacity==9.1.2
+SQLAlchemy==2.0.30
+psycopg2-binary==2.9.9

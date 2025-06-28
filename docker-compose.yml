@@ -1,0 +1,226 @@
+version: '3.8'
+
+networks:
+  project-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  pgadmin_data:
+
+services:
+
+# !!!!!!!!!!!!!!
+# DATABASE
+# !!!!!!!!!!!!!!
+
+  postgres:
+    image: postgres:15
+    container_name: db_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: project_db
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: secret123
+      TZ: Europe/Warsaw
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database_init.sql:/docker-entrypoint-initdb.d/database_init.sql
+    networks:
+      - project-net
+
+  pgadmin:
+    image: dpage/pgadmin4:9.4
+    container_name: db_pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: secret123
+    ports:
+      - "8080:80"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    networks:
+      - project-net
+    depends_on:
+      - postgres
+      - zookeeper
+      - kafka-broker-1
+      - kafka-broker-2
+      - kafka-broker-3
+
+# !!!!!!!!!!!!!!
+# KAFKA CLUSTER
+# !!!!!!!!!!!!!!
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.9.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    networks:
+      - project-net
+
+  kafka-broker-1:
+    image: confluentinc/cp-kafka:7.9.0
+    container_name: kafka-broker-1
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    networks:
+      - project-net
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,PLAINTEXT_HOST://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-broker-1:9092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 2
+      KAFKA_CREATE_TOPICS: "bikes:6:2,buses:12:2,environment:1:2"
+
+  kafka-broker-2:
+    image: confluentinc/cp-kafka:7.9.0
+    container_name: kafka-broker-2
+    depends_on:
+      - zookeeper
+    ports:
+      - "9093:9093"
+    networks:
+      - project-net
+    environment:
+      KAFKA_BROKER_ID: 2
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9093,PLAINTEXT_HOST://0.0.0.0:29093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-broker-2:9093,PLAINTEXT_HOST://localhost:9093
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 2
+
+  kafka-broker-3:
+    image: confluentinc/cp-kafka:7.9.0
+    container_name: kafka-broker-3
+    depends_on:
+      - zookeeper
+    ports:
+      - "9094:9094"
+    networks:
+      - project-net
+    environment:
+      KAFKA_BROKER_ID: 3
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9094,PLAINTEXT_HOST://0.0.0.0:29094
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-broker-3:9094,PLAINTEXT_HOST://localhost:9094
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 2
+
+# !!!!!!!!!!!!!!
+# PRODUCERS
+# !!!!!!!!!!!!!!
+
+  bikes-producer:
+    build:  
+      context: ./
+      dockerfile: ./producers/bikes_producer/Dockerfile
+    container_name: producer-bikes
+    restart: always
+    depends_on:
+      - pgadmin
+    networks:
+      - project-net
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  buses-producer:
+    build:  
+      context: ./
+      dockerfile: ./producers/buses_producer/Dockerfile
+    container_name: producer-buses
+    restart: always
+    depends_on:
+      - pgadmin
+    networks:
+      - project-net
+
+  environment-producer:
+    build:  
+      context: ./
+      dockerfile: ./producers/environment_producer/Dockerfile
+    container_name: producer-environment
+    restart: always
+    depends_on:
+      - pgadmin
+    networks:
+      - project-net
+
+
+
+
+
+# !!!!!!!!!!!!!!
+# SUBSCRIBERS
+# !!!!!!!!!!!!!!
+
+  bikes-subscriber:
+    build:  
+      context: ./
+      dockerfile: ./subscribers/bikes_subscribers/Dockerfile
+    container_name: subscriber-bikes
+    restart: always
+    environment:
+      KAFKA_BROKER: kafka-broker-1:9092
+      KAFKA_TOPIC: bikes
+      KAFKA_GROUP: bikes-subscriber
+    depends_on:
+      - pgadmin
+    networks:
+      - project-net
+
+  buses-subscriber:
+    build:  
+      context: ./
+      dockerfile: ./subscribers/buses_subscribers/Dockerfile
+    container_name: subscriber-buses
+    restart: always
+    environment:
+      KAFKA_BROKER: kafka-broker-1:9092
+      KAFKA_TOPIC: buses
+      KAFKA_GROUP: buses-subscriber
+    depends_on:
+      - pgadmin
+    networks:
+      - project-net
+
+  environment-subscriber:
+    build: 
+      context: ./
+      dockerfile: ./subscribers/environment_subscribers/Dockerfile
+    container_name: subscriber-environment
+    restart: always
+    environment:
+      KAFKA_BROKER: kafka-broker-1:9092
+      KAFKA_TOPIC: environment
+      KAFKA_GROUP: environment-subscriber
+    depends_on:
+      - pgadmin
+    networks:
+      - project-net
+
+
+
