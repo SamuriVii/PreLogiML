@@ -6,9 +6,11 @@ import time
 print("Kontener startuje")
 time.sleep(60)
 
-# --- Importy połączenia się i funkcji łączących się z PostGreSQL ---
-from shared.db_utils import save_log
+# --- Importy połączenia się i funkcji łączących się z PostGreSQL i innych---
+from shared.db_utils import save_log, save_bus_cluster_record
 from shared.preprocessing_utils import enrich_data_with_environment, refactor_buses_data, rename_keys, replace_nulls
+from shared.clusterization.clusterization import BusClusterPredictor, get_models_status
+bus_predictor = BusClusterPredictor()
 
 # --- Ustawienia podstawowe ---
 KAFKA_BROKER = "kafka-broker-1:9092"
@@ -26,6 +28,7 @@ consumer = KafkaConsumer(
 )
 
 print(f"✅ Subskrybent działa na topicu '{KAFKA_TOPIC}'...")
+bus_predictor.load_model()
 
 try:
     for message in consumer:
@@ -40,16 +43,29 @@ try:
         enriched = rename_keys(enriched)
         enriched = replace_nulls(enriched)
 
+        save_bus_cluster_record(enriched)
+
         print("🧠 Wzbogacone dane:")
         print(json.dumps(enriched, indent=2, ensure_ascii=False))
 
+        cluster_id = bus_predictor.predict_cluster_from_dict(enriched)
+        
+        if cluster_id is not None:
+            enriched['cluster_id'] = cluster_id
+            enriched['cluster_prediction_success'] = True
+            print(f"🎯 Przewidziano klaster: {cluster_id}")
+        else:
+            enriched['cluster_id'] = None
+            enriched['cluster_prediction_success'] = False
+            print("⚠️ Nie udało się przewidzieć klastra")
+
+        print("🧠🧠🧠🧠🧠🧠 Wzbogacone dane (z klastrem):")
+        print(json.dumps(enriched, indent=2, ensure_ascii=False, default=str))
+
+
+
+
         # (Tu można np. zapisać do SQL, pliku lub dalszego procesu ML)
-
-
-
-
-
-
 
 
 

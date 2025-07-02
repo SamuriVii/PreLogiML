@@ -7,6 +7,8 @@ networks:
 volumes:
   postgres_data:
   pgadmin_data:
+  anythingllm_data:
+  ollama_models:
 
 services:
 
@@ -50,6 +52,74 @@ services:
       - kafka-broker-1
       - kafka-broker-2
       - kafka-broker-3
+
+# !!!!!!!!!!!!!!
+# OLLAMA SERVICE
+# !!!!!!!!!!!!!!
+
+  ollama:
+    build:
+      context: ./anythingllm/ollama
+      dockerfile: Dockerfile
+    container_name: ollama
+    restart: always
+    ports:
+      - "11434:11434"
+    networks:
+      - project-net
+    volumes:
+      - ollama_models:/root/.ollama
+
+
+
+
+
+
+
+
+
+
+
+
+# !!!!!!!!!!!!!!
+# ANYTHINGLLM  ------ DODAĆ KONFIGURACJĘ? ŻEBY OTWIERAŁ API? LUB MOŻE JAKOŚ GENEROWAŁ SAM JE? POMYŚLEĆ JAK TO ZROBIĆ + ŁĄCZENIE Z OLLAMA DODAĆ
+# !!!!!!!!!!!!!!
+
+  anythingllm:
+    image: mintplexlabs/anythingllm@sha256:528c856f42f16b71ac3a457bebb04c91b8d48281e47f29d51d8398a2714b87c9
+    container_name: anythingllm
+    restart: always
+    ports:
+      - "3001:3001"
+    volumes:
+      - anythingllm_data:/app/server/storage
+    environment:
+      LLM_PROVIDER: ollama
+      VECTOR_DB: chroma
+      DISABLE_TELEMETRY: 'true'
+      STORAGE_DIR: /app/server/storage
+      SERVER_PORT: '3001'
+      ADMIN_EMAIL: admin@admin.com
+      ADMIN_PASSWORD: secret123
+      OLLAMA_API_BASE_URL: http://ollama:11434
+    cap_add:
+      - SYS_ADMIN
+    networks:
+      - project-net
+    depends_on:
+      - postgres
+      - ollama
+
+
+
+
+
+
+
+
+
+
+
 
 # !!!!!!!!!!!!!!
 # KAFKA CLUSTER
@@ -133,20 +203,6 @@ services:
     networks:
       - project-net
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
   buses-producer:
     build:  
       context: ./
@@ -168,10 +224,6 @@ services:
       - pgadmin
     networks:
       - project-net
-
-
-
-
 
 # !!!!!!!!!!!!!!
 # SUBSCRIBERS
@@ -224,3 +276,33 @@ services:
 
 
 
+
+
+
+
+
+
+
+
+
+
+ 
+
+
+# !!!!!!!!!!!!!!
+# LLM TESTER - TO JEST CHWILOWE, ŻEBY PRZETESTOWAĆ API ANYTHINGLLM - POTEM PRZEROBI SIĘ, ŻE TO BĘDZIE TAKI KONFIGURATOR PRZYGOTOWUJĄCY ANYTHINGLLM
+# !!!!!!!!!!!!!!
+
+  # llm-tester:
+  #   build:
+  #     context: ./
+  #     dockerfile: ./llm_tester/Dockerfile
+  #   container_name: llm-tester
+  #   environment:
+  #     ANYTHINGLLM_API_URL: http://anythingllm:3001
+  #   depends_on:
+  #     - postgres
+  #     - anythingllm
+  #     - ollama
+  #   networks:
+  #     - project-net

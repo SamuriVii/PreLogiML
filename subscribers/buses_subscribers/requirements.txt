@@ -2,3 +2,6 @@ kafka-python==2.2.11
 tenacity==8.2.3
 SQLAlchemy==2.0.30
 psycopg2-binary==2.9.9
+pandas==2.3.0
+joblib==1.5.1
+scikit-learn==1.5.0
