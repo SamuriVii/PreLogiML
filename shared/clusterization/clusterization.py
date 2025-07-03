@@ -161,7 +161,6 @@ class BikeStationClusterPredictor:
         print("🔄 Przeładowywanie modelu...")
         return self.load_model()
 
-
 class BusClusterPredictor:
     def __init__(self, model_path='/app/shared/clusterization/models/buses_kmeans.pkl'):
         """Inicjalizuje predyktor z wczytanym modelem"""
