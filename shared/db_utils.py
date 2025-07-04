@@ -1,7 +1,7 @@
-from shared.db_dto import LogsEntry, EnvironmentEntry, BikeCluster, BusesCluster, BikeClass, BusesClass
+from shared.db_dto import LogsEntry, EnvironmentEntry, BikesData, BusesData
 from shared.db_conn import SessionLocal
-from sqlalchemy import func
 from datetime import datetime, timezone
+from sqlalchemy import func
 from copy import deepcopy
 import time
 
@@ -24,78 +24,37 @@ def get_closest_environment(session, target_ts: datetime):
         session.query(EnvironmentEntry).order_by(func.abs(func.extract('epoch', EnvironmentEntry.timestamp) - target_ts.timestamp())).first()
     )
 
-# Funkcja zapisująca rekord danych uczących model klasteryzacji do bazy (dane rowerowe)
-def save_bike_cluster_record(enriched: dict):
+# +-------------------------------------+
+# |         ZAPISYWANIE DANYCH          |
+# |      Funkcje Zapisujące Rekordy     |
+# +-------------------------------------+
+
+# Funkcja zapisująca rekord danych (dane rowerowe)
+def save_bike_data_to_base(final_sql_data: dict):
     db = SessionLocal()
     try:
-        data_to_save = deepcopy(enriched)
+        data_to_save = deepcopy(final_sql_data)
         data_to_save["timestamp"] = datetime.fromtimestamp(data_to_save.get("timestamp", time.time()), tz=timezone.utc)
 
-        bike_record = BikeCluster(**data_to_save)
+        bike_record = BikesData(**data_to_save)
         db.add(bike_record)
         db.commit()
-        print("🚲 BikeCluster record saved.")
+        save_log("subscriber_bikes", "info", "Zapisano dane.")
     except Exception as e:
         db.rollback()
-        print(f"❌ Error saving BikeCluster record: {e}")
+        save_log("subscriber_bikes", "error", f"Wystąpił błąd podczas zapisu danych: {e}.")
 
-# Funkcja zapisująca rekord danych uczących model klasteryzacji do bazy (dane autobusowe)
-def save_bus_cluster_record(enriched: dict):
+# Funkcja zapisująca rekord (dane autobusowe)
+def save_bus_data_to_base(final_sql_data: dict):
     db = SessionLocal()
     try:
-        data_to_save = deepcopy(enriched)
+        data_to_save = deepcopy(final_sql_data)
         data_to_save["timestamp"] = datetime.fromtimestamp(data_to_save.get("timestamp", time.time()), tz=timezone.utc)
 
-        bus_record = BusesCluster(**data_to_save)
+        bus_record = BusesData(**data_to_save)
         db.add(bus_record)
         db.commit()
-        print("🚌 BusesCluster record saved.")
+        save_log("subscriber_buses", "info", "Zapisano dane.")
     except Exception as e:
         db.rollback()
-        print(f"❌ Error saving BusesCluster record: {e}")
-
-# Funkcja zapisująca rekord danych uczących model klasyfikacji do bazy (dane rowerowe)
-def save_bike_class_record(enriched: dict):
-    db = SessionLocal()
-    try:
-        data_to_save = deepcopy(enriched)
-        data_to_save["timestamp"] = datetime.fromtimestamp(data_to_save.get("timestamp", time.time()), tz=timezone.utc)
-
-        bike_record = BikeClass(**data_to_save)
-        db.add(bike_record)
-        db.commit()
-        print("🚲 BikeClass record saved.")
-    except Exception as e:
-        db.rollback()
-        print(f"❌ Error saving BikeClass record: {e}")
-
-# Funkcja zapisująca rekord danych uczących model klasyfikacji do bazy (dane autobusowe)
-def save_bus_class_record(enriched: dict):
-    db = SessionLocal()
-    try:
-        data_to_save = deepcopy(enriched)
-        data_to_save["timestamp"] = datetime.fromtimestamp(data_to_save.get("timestamp", time.time()), tz=timezone.utc)
-
-        bus_record = BusesClass(**data_to_save)
-        db.add(bus_record)
-        db.commit()
-        print("🚌 BusesClass record saved.")
-    except Exception as e:
-        db.rollback()
-        print(f"❌ Error saving BusesClass record: {e}")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        save_log("subscriber_buses", "error", f"Wystąpił błąd podczas zapisu danych: {e}.")

@@ -7,9 +7,9 @@ import time
 print("Kontener startuje")
 time.sleep(60)
 
-# --- Importy połączenia się i funkcji łączących się z PostGreSQL ---
-from shared.db_conn import SessionLocal
+# --- Importy połączenia się i funkcji łączących się z PostGreSQL i innych ---
 from shared.db_dto import EnvironmentEntry
+from shared.db_conn import SessionLocal
 from shared.db_utils import save_log
 
 # --- Ustawienia podstawowe ---
@@ -31,6 +31,11 @@ consumer = KafkaConsumer(
     session_timeout_ms=30000,
     heartbeat_interval_ms=3000
 )
+
+# +-------------------------------------+
+# |       GŁÓWNA CZĘŚC WYKONUJĄCA       |
+# |      Proces przetwarzania danych    |
+# +-------------------------------------+
 
 print(f"✅ Subskrybent działa na topicu '{KAFKA_TOPIC}'...")
 save_log("subscriber_environment", "info", "Subscriber uruchomiony.")
@@ -65,7 +70,6 @@ try:
                 o3=data.get("air_quality", {}).get("o3"),
                 so2=data.get("air_quality", {}).get("so2")
             )
-
             db.add(entry)
             db.commit()
             db.close()

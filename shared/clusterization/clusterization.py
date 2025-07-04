@@ -1,11 +1,38 @@
+from shared.db_utils import save_log
 from typing import Dict, Optional
 import pandas as pd
 import joblib
 import os
 
+# +--------------------------------------------------+
+# |      KLASA MODELU ROWEROWEGO KLASTERYZACJI       |
+# |            Funkcje do zarządzania                |
+# +--------------------------------------------------+
+
+"""
+Klasa odpowiedzialna za predykcję klastra dla stacji rowerowych.
+Wykorzystuje wytrenowany model K-Means do grupowania stacji
+o podobnych charakterystykach operacyjnych i warunkach środowiskowych.
+
+Klasteryzowane cechy:
+- Dane o stacji: 'bikes_available', 'docks_available', 'capacity',
+    'manual_bikes_available', 'electric_bikes_available'.
+    Określają bieżący stan i pojemność stacji, kluczowe dla zarządzania flotą.
+- Dane pogodowe: 'temperature', 'wind_kph', 'precip_mm', 'humidity',
+    'weather_condition'.
+    Pogoda znacząco wpływa na użytkowanie rowerów, pozwalając na grupowanie
+    stacji według ich reakcji na różne warunki atmosferyczne.
+- Dane o jakości powietrza: 'fine_particles_pm2_5', 'coarse_particles_pm10'.
+    Zanieczyszczenie powietrza może wpływać na decyzje użytkowników,
+    zmieniając wzorce korzystania ze stacji.
+
+Celem jest identyfikacja typowych zachowań stacji w różnych warunkach,
+co wspiera optymalizację dystrybucji rowerów i doków.
+"""
+
 class BikeStationClusterPredictor:
+    # Inicjalizuje predyktor z wczytanym modelem
     def __init__(self, model_path='/app/shared/clusterization/models/bikes_kmeans.pkl'):
-        """Inicjalizuje predyktor z wczytanym modelem"""
         self.model_path = model_path
         self.model_data = None
         self.kmeans = None
@@ -16,8 +43,8 @@ class BikeStationClusterPredictor:
         
         self.load_model()
     
+    # Wczytuje zapisany model i wszystkie komponenty
     def load_model(self):
-        """Wczytuje zapisany model i wszystkie komponenty"""
         try:
             if not os.path.exists(self.model_path):
                 print(f"⚠️ Model nie istnieje: {self.model_path}")
@@ -34,17 +61,19 @@ class BikeStationClusterPredictor:
             print(f"✅ Model załadowany pomyślnie!")
             print(f"   Liczba klastrów: {self.model_data['n_clusters']}")
             print(f"   Silhouette Score: {self.model_data['silhouette_score']:.3f}")
-            
+            save_log("cluster_bikes", "info", f"Załadowano model z {self.model_data['n_clusters']} klastrów oraz {self.model_data['silhouette_score']:.3f} silhouette score.")
+
             self.is_loaded = True
             return True
             
         except Exception as e:
             print(f"❌ Błąd ładowania modelu: {e}")
+            save_log("cluster_bikes", "error", f"Błąd ładowania modelu: {e}.")
             self.is_loaded = False
             return False
 
+    # Przygotowuje cechy z pojedynczego dict'a (dla real-time predykcji)
     def prepare_features_from_dict(self, enriched_dict: Dict) -> Optional[pd.DataFrame]:
-        """Przygotowuje cechy z pojedynczego dict'a (dla real-time predykcji)"""
         
         # Mapowanie nazw kolumn z twojego enriched dict'a
         feature_mapping = {
@@ -109,14 +138,16 @@ class BikeStationClusterPredictor:
                 print("⚠️ Dane zawierają wartości NaN")
                 return None
             
+            save_log("cluster_bikes", "info", f"Pomyślnie przygotowano zmienne dla modelu z dicta.")
             return df
             
         except Exception as e:
             print(f"❌ Błąd przygotowywania cech: {e}")
+            save_log("cluster_bikes", "error", f"Wystąpił błąd przy przygotowywaniu zmiennych dla modelu z dicta: {e}.")
             return None
     
+    # Przewiduje klaster dla pojedynczego dict'a danych
     def predict_cluster_from_dict(self, enriched_dict: Dict) -> Optional[int]:
-        """Przewiduje klaster dla pojedynczego dict'a danych"""
         
         if not self.is_loaded:
             print("⚠️ Model nie jest załadowany")
@@ -136,14 +167,16 @@ class BikeStationClusterPredictor:
             # Predykcja
             cluster_prediction = self.kmeans.predict(features_scaled)
             
+            save_log("cluster_bikes", "info", f"Pomyślnie przewidziano klaster dla danych.")
             return int(cluster_prediction[0])
             
         except Exception as e:
+            save_log("cluster_bikes", "error", f"Wystąpił błąd przy przewidywaniu klastra dla danych: {e}.")
             print(f"❌ Błąd predykcji klastra: {e}")
             return None
     
+    # Zwraca informacje o centrum klastra
     def get_cluster_info(self, cluster_id: int) -> Optional[Dict]:
-        """Zwraca informacje o centrum klastra"""
         if not self.is_loaded or cluster_id >= len(self.kmeans.cluster_centers_):
             return None
         
@@ -156,14 +189,42 @@ class BikeStationClusterPredictor:
         
         return cluster_info
     
+    # Przeładowuje model z dysku
     def reload_model(self) -> bool:
-        """Przeładowuje model z dysku"""
         print("🔄 Przeładowywanie modelu...")
+        save_log("cluster_bikes", "info", f"Przeładowywanie modelu.")
         return self.load_model()
 
+# +--------------------------------------------------+
+# |      KLASA MODELU AUTOBUSOWE KLASTERYZACJI       |
+# |             Funkcje do zarządzania               |
+# +--------------------------------------------------+
+
+"""
+Klasa odpowiedzialna za predykcję klastra dla danych autobusowych.
+Wykorzystuje wytrenowany model K-Means do grupowania autobusów/tras
+o podobnych wzorcach opóźnień, uwzględniając zarówno czynniki operacyjne,
+jak i środowiskowe.
+
+Klasteryzowane cechy:
+- Dane o opóźnieniach: 'average_delay_seconds', 'maximum_delay_seconds',
+    'minimum_delay_seconds', 'delay_standard_deviation', 'delay_range_seconds',
+    'on_time_stop_ratio', 'delay_consistency_score', 'stops_count'.
+    Opisują charakterystykę opóźnień i punktualności, kluczowe dla optymalizacji
+    rozkładów i zarządzania ruchem.
+- Dane pogodowe: 'temperature', 'wind_kph', 'precip_mm', 'humidity',
+    'weather_condition'.
+    Warunki atmosferyczne mają istotny wpływ na ruch drogowy i punktualność autobusów.
+- Dane o jakości powietrza: 'fine_particles_pm2_5', 'coarse_particles_pm10'.
+    Jakość powietrza może być dodatkowym czynnikiem wpływającym na warunki ruchu.
+
+Celem jest identyfikacja grup autobusów/tras o podobnych "profilach" opóźnień
+w różnych warunkach, co wspiera diagnozowanie problemów i efektywne planowanie transportu.
+"""
+
 class BusClusterPredictor:
+    # Inicjalizuje predyktor z wczytanym modelem
     def __init__(self, model_path='/app/shared/clusterization/models/buses_kmeans.pkl'):
-        """Inicjalizuje predyktor z wczytanym modelem"""
         self.model_path = model_path
         self.model_data = None
         self.kmeans = None
@@ -174,8 +235,8 @@ class BusClusterPredictor:
         
         self.load_model()
     
+    # Wczytuje zapisany model i wszystkie komponenty
     def load_model(self):
-        """Wczytuje zapisany model i wszystkie komponenty"""
         try:
             if not os.path.exists(self.model_path):
                 print(f"⚠️ Model nie istnieje: {self.model_path}")
@@ -192,17 +253,19 @@ class BusClusterPredictor:
             print(f"✅ Model załadowany pomyślnie!")
             print(f"   Liczba klastrów: {self.model_data['n_clusters']}")
             print(f"   Silhouette Score: {self.model_data['silhouette_score']:.3f}")
+            save_log("cluster_buses", "info", f"Załadowano model z {self.model_data['n_clusters']} klastrów oraz {self.model_data['silhouette_score']:.3f} silhouette score.")
             
             self.is_loaded = True
             return True
             
         except Exception as e:
             print(f"❌ Błąd ładowania modelu: {e}")
+            save_log("cluster_buses", "error", f"Błąd ładowania modelu: {e}.")
             self.is_loaded = False
             return False
 
+    # Przygotowuje cechy z pojedynczego dict'a (dla real-time predykcji)
     def prepare_features_from_dict(self, enriched_dict: Dict) -> Optional[pd.DataFrame]:
-        """Przygotowuje cechy z pojedynczego dict'a (dla real-time predykcji)"""
         
         # Mapowanie nazw kolumn z twojego enriched dict'a
         feature_mapping = {
@@ -271,14 +334,16 @@ class BusClusterPredictor:
                 print("⚠️ Dane zawierają wartości NaN")
                 return None
             
+            save_log("cluster_buses", "info", f"Pomyślnie przygotowano zmienne dla modelu z dicta.")
             return df
             
         except Exception as e:
             print(f"❌ Błąd przygotowywania cech: {e}")
+            save_log("cluster_buses", "error", f"Wystąpił błąd przy przygotowywaniu zmiennych dla modelu z dicta: {e}.")
             return None
     
+    # Przewiduje klaster dla pojedynczego dict'a danych
     def predict_cluster_from_dict(self, enriched_dict: Dict) -> Optional[int]:
-        """Przewiduje klaster dla pojedynczego dict'a danych"""
         
         if not self.is_loaded:
             print("⚠️ Model nie jest załadowany")
@@ -298,14 +363,16 @@ class BusClusterPredictor:
             # Predykcja
             cluster_prediction = self.kmeans.predict(features_scaled)
             
+            save_log("cluster_buses", "info", f"Pomyślnie przewidziano klaster dla danych.")
             return int(cluster_prediction[0])
             
         except Exception as e:
             print(f"❌ Błąd predykcji klastra: {e}")
+            save_log("cluster_buses", "error", f"Wystąpił błąd przy przewidywaniu klastra dla danych: {e}.")
             return None
     
+    # Zwraca informacje o centrum klastra
     def get_cluster_info(self, cluster_id: int) -> Optional[Dict]:
-        """Zwraca informacje o centrum klastra"""
         if not self.is_loaded or cluster_id >= len(self.kmeans.cluster_centers_):
             return None
         
@@ -318,39 +385,52 @@ class BusClusterPredictor:
         
         return cluster_info
     
+    # Przeładowuje model z dysku
     def reload_model(self) -> bool:
-        """Przeładowuje model z dysku"""
         print("🔄 Przeładowywanie modelu...")
+        save_log("cluster_buses", "info", f"Przeładowywanie modelu.")
         return self.load_model()
 
-# Dodatkowe funkcje
-def reload_models():
-    """Przeładowuje wszystkie modele z dysku"""
-    global _bike_predictor, _bus_predictor
-    
-    print("🔄 Przeładowywanie modeli...")
-    
-    if _bike_predictor:
-        _bike_predictor.reload_model()
-    
-    if _bus_predictor:
-        _bus_predictor.reload_model()
-        pass
-    
-    print("✅ Przeładowywanie modeli zakończone")
+# +--------------------------------------------------+
+# |     FUNKCJE DODATKOWE DO ZARZĄDZANIA MODELAMI    |
+# |             Funkcje do zarządzania               |
+# +--------------------------------------------------+
 
+# Globalne instancje predyktorów dla łatwego dostępu
+# Będą ładowane przy pierwszym imporcie tego pliku
+bike_cluster_predictor = BikeStationClusterPredictor(model_path='/app/shared/clusterization/models/bikes_kmeans.pkl')
+bus_cluster_predictor = BusClusterPredictor(model_path='/app/shared/clusterization/models/buses_kmeans.pkl')
+
+# Przeładowuje wszystkie modele z dysku
+def reload_models():
+
+    global bike_cluster_predictor, bus_cluster_predictor
+    
+    print("🔄 Przeładowywanie modeli klastrów...")
+    
+    if bike_cluster_predictor:
+        bike_cluster_predictor.reload_model()
+    
+    if bus_cluster_predictor:
+        bus_cluster_predictor.reload_model()
+    
+    print("✅ Przeładowywanie modeli klastrów zakończone")
+    save_log("cluster_module", "info", f"Przeładowano wszystkie modele klasteryzacji.")
+
+# Zwraca status wszystkich modeli
 def get_models_status() -> Dict:
-    """Zwraca status wszystkich modeli"""
-    global _bike_predictor, _bus_predictor
+
+    global bike_cluster_predictor, bus_cluster_predictor
     
     return {
-        'bike_predictor': {
-            'loaded': _bike_predictor is not None and _bike_predictor.is_loaded,
-            'model_path': _bike_predictor.model_path if _bike_predictor else None,
-            'n_clusters': _bike_predictor.model_data.get('n_clusters') if _bike_predictor and _bike_predictor.is_loaded else None
+        'bike_cluster_predictor': {
+            'loaded': bike_cluster_predictor.is_loaded,
+            'model_path': bike_cluster_predictor.model_path,
+            'n_clusters': bike_cluster_predictor.model_data.get('n_clusters') if bike_cluster_predictor.is_loaded else None
         },
-        'bus_predictor': {
-            'loaded': _bus_predictor is not None and getattr(_bus_predictor, 'is_loaded', False),
-            'model_path': _bus_predictor.model_path if _bus_predictor else None
+        'bus_cluster_predictor': {
+            'loaded': bus_cluster_predictor.is_loaded,
+            'model_path': bus_cluster_predictor.model_path,
+            'n_clusters': bus_cluster_predictor.model_data.get('n_clusters') if bus_cluster_predictor.is_loaded else None
         }
     }

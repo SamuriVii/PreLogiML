@@ -9,7 +9,7 @@ import time
 
 # --- Opóźnienie startu ---
 print("Kontener startuje")
-time.sleep(60)
+time.sleep(180)
 
 # --- Importy połączenia się i funkcji łączących się z PostGreSQL ---
 from shared.db_utils import save_log

@@ -1,9 +1,14 @@
-from shared.db_conn import SessionLocal
+from shared.classification.classification import IS_LATE_MAPPING, DELAY_CATEGORY_MAPPING, BIKE_BINARY_MAPPING, BIKE_MULTICLASS_MAPPING
 from shared.db_utils import get_closest_environment, save_log
-from typing import Dict
+from shared.db_conn import SessionLocal
+from typing import Dict, Optional, List
 import statistics
 import datetime
-from shared.classification.classification import IS_LATE_MAPPING, DELAY_CATEGORY_MAPPING, BIKE_BINARY_MAPPING, BIKE_MULTICLASS_MAPPING
+
+# +--------------------------------------------------+
+# |         PRZYGOTOWANIE DANYCH AUTOBUSOWYCH        |
+# |           Funkcja główna i pomocnicza            |
+# +--------------------------------------------------+
 
 # Funkcja przerabiajaca dane buses w celu ich wypłaszczenia pod Machine Learning
 def refactor_buses_data(bus_data):
@@ -122,6 +127,11 @@ def calculate_delay_trend(delays):
     else:
         return "stable"
 
+# +--------------------------------------------+
+# |         WZBOGACENIE DANYCH POGODĄ          |
+# |  Funkcje wzbogacające i oczyszcające dane  |
+# +--------------------------------------------+
+
 # Funkcja wzbogacająca dane bikes/buses o dane środowiskowe (environment)
 def enrich_data_with_environment(who: str, data: dict) -> dict:
     db = SessionLocal()
@@ -181,7 +191,7 @@ def enrich_data_with_environment(who: str, data: dict) -> dict:
     finally:
         db.close()
 
-# Funkcja zamieniające nazwy zmiennych słownika na bardziej znajome dla LLM oraz oczyszczające NULLe dla ML
+# Funkcja zamieniające nazwy zmiennych słownika na bardziej znajome dla LLM oraz oczyszczające NULLE dla ML
 RENAME_MAP = {
     "pm2_5": "fine_particles_pm2_5",
     "pm10": "coarse_particles_pm10",
@@ -212,6 +222,21 @@ RENAME_MAP = {
     "headsign": "route_destination",
 }
 
+STRING_COLUMNS_TO_HANDLE_AS_UNKNOWN: List[str] = [
+    "vehicle_id",
+    "bus_line_number",
+    "route_destination",
+    "station_id",
+    "name"
+]
+
+NUMERIC_COLUMNS_TO_HANDLE_AS_ZERO: List[str] = [
+    "lat",
+    "lon",
+    "speed",
+    "direction",
+]
+
 def rename_keys(data: dict) -> dict:
     return {
         RENAME_MAP.get(key, key): value
@@ -219,17 +244,27 @@ def rename_keys(data: dict) -> dict:
     }
 
 def replace_nulls(data: dict) -> dict:
-    return {
-        key: ("unknown" if value is None else value)
-        for key, value in data.items()
-    }
+    processed_data = {}
+    for key, value in data.items():
+        if value is None:
+            if key in STRING_COLUMNS_TO_HANDLE_AS_UNKNOWN:
+                processed_data[key] = "unknown"
+            elif key in NUMERIC_COLUMNS_TO_HANDLE_AS_ZERO:
+                processed_data[key] = 0.0
+            else:
+                processed_data[key] = None 
+        else:
+            processed_data[key] = value
+            
+    return processed_data
+
+# +-------------------------------------+
+# |          TWORZENIE ZDANIA           |
+# |  Funkcje tworzące zdania z danych   |
+# +-------------------------------------+
 
 # Funkcja tworząca zdanie z danych rowerowych:
 def create_bike_summary_sentence(data: Dict) -> str:
-    """
-    Tworzy zdanie podsumowujące na podstawie danych stacji rowerowej i predykcji.
-    Wykorzystuje tekstowe etykiety predykcji z classification.py.
-    """
     summary_parts = []
 
     # Informacje podstawowe o stacji
@@ -313,14 +348,10 @@ def create_bike_summary_sentence(data: Dict) -> str:
     if pm2_5 is not None and pm10 is not None:
         summary_parts.append(f"Jakość powietrza: PM2.5 na poziomie {pm2_5:.1f} µg/m³, PM10 na poziomie {pm10:.1f} µg/m³.")
 
-    return " ".join(summary_parts).strip()
+    return " ".join(summary_parts).strip(), save_log("subscriber_bikes", "info", "Stworzono zdanie pod embedding.")
 
 # Funkcja tworząca zdanie z danych autobusowych:
 def create_bus_summary_sentence(data: Dict) -> str:
-    """
-    Tworzy zdanie podsumowujące na podstawie danych autobusu i predykcji.
-    Wykorzystuje tekstowe etykiety predykcji z classification.py.
-    """
     summary_parts = []
 
     # Informacje podstawowe
@@ -332,7 +363,6 @@ def create_bus_summary_sentence(data: Dict) -> str:
         summary_parts.append(f"Przejazd autobusu linii {bus_line} (ID podróży: {trip_id}) w kierunku {route_dest}.")
     else:
         summary_parts.append(f"Autobus linii {bus_line} w kierunku {route_dest}.")
-
 
     # Predykcja klastra
     cluster_id = data.get('cluster_id')
@@ -356,7 +386,6 @@ def create_bus_summary_sentence(data: Dict) -> str:
         # Dodatkowa informacja, jeśli predykcja była ujemna i została obcięta
         if data.get('average_delay_seconds_prediction_success') and avg_delay_pred == 0 and data.get('average_delay_seconds_prediction_original', 1) < 0:
             summary_parts.append("(Prognoza była ujemna i została obcięta do zera).")
-
 
     # Warunki pogodowe
     weather_cond = data.get('weather_condition')
@@ -383,4 +412,33 @@ def create_bus_summary_sentence(data: Dict) -> str:
     if pm2_5 is not None and pm10 is not None:
         summary_parts.append(f"Jakość powietrza: PM2.5 na poziomie {pm2_5:.1f} µg/m³, PM10 na poziomie {pm10:.1f} µg/m³.")
 
-    return " ".join(summary_parts).strip()
+    return " ".join(summary_parts).strip(), save_log("subscriber_buses", "info", "Stworzono zdanie pod embedding.")
+
+# +--------------------------------------------------+
+# |  PRZYGOTOWANIE DANYCH POD SQL I VECTOR DATABASE  |
+# |         Funkcje tworzące zdania z danych         |
+# +--------------------------------------------------+
+
+# Przygotowuje słownik danych do zapisu w bazie SQL, łącząc wszystkie wzbogacone dane z wygenerowanym zdaniem podsumowującym.
+def prepare_sql_record_all_fields(enriched_data: Dict, summary_sentence: str) -> Dict:
+
+    sql_record = enriched_data.copy() # Pracujemy na kopii, aby nie modyfikować oryginalnego enriched_data
+    sql_record['summary_sentence'] = summary_sentence
+    return sql_record
+
+# Przygotowuje strukturę danych do zapisu w bazie wektorowej. Zwraca None, jeśli embedding jest niedostępny.
+def prepare_vector_db_record_all_fields(enriched_data_for_metadata: Dict, summary_sentence: str, embedding_vector: Optional[List[float]]) -> Optional[Dict]:
+
+    if embedding_vector is None:
+        print("⚠️ Nie można przygotować rekordu dla bazy wektorowej: brak embeddingu.")
+        return None
+
+    # Wszystkie pola enriched_data_for_metadata stają się metadanymi
+    metadata = enriched_data_for_metadata.copy()
+
+    vector_record = {
+        "vector": embedding_vector,
+        "text": summary_sentence,
+        "metadata": metadata
+    }
+    return vector_record

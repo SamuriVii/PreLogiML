@@ -9,6 +9,7 @@ volumes:
   pgadmin_data:
   anythingllm_data:
   ollama_models:
+  chromadb_data:
 
 services:
 
@@ -70,19 +71,23 @@ services:
     volumes:
       - ollama_models:/root/.ollama
 
+# !!!!!!!!!!!!!!
+# CHROMA SERVICE
+# !!!!!!!!!!!!!!
 
-
-
-
-
-
-
-
-
-
+  chroma:
+    image: chromadb/chroma
+    container_name: chromadb
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - chromadb_data:/chroma/data
+    networks:
+      - project-net
 
 # !!!!!!!!!!!!!!
-# ANYTHINGLLM  ------ DODAĆ KONFIGURACJĘ? ŻEBY OTWIERAŁ API? LUB MOŻE JAKOŚ GENEROWAŁ SAM JE? POMYŚLEĆ JAK TO ZROBIĆ + ŁĄCZENIE Z OLLAMA DODAĆ
+# ANYTHINGLLM
 # !!!!!!!!!!!!!!
 
   anythingllm:
@@ -94,14 +99,15 @@ services:
     volumes:
       - anythingllm_data:/app/server/storage
     environment:
-      LLM_PROVIDER: ollama
-      VECTOR_DB: chroma
-      DISABLE_TELEMETRY: 'true'
-      STORAGE_DIR: /app/server/storage
       SERVER_PORT: '3001'
+      VECTOR_DB: chroma
+      LLM_PROVIDER: ollama
+      CHROMA_API_BASE_URL: http://chroma:8000
+      OLLAMA_API_BASE_URL: http://ollama:11434
+      STORAGE_DIR: /app/server/storage
+      DISABLE_TELEMETRY: 'true'
       ADMIN_EMAIL: admin@admin.com
       ADMIN_PASSWORD: secret123
-      OLLAMA_API_BASE_URL: http://ollama:11434
     cap_add:
       - SYS_ADMIN
     networks:
@@ -109,6 +115,7 @@ services:
     depends_on:
       - postgres
       - ollama
+      - chroma
 
 
 
