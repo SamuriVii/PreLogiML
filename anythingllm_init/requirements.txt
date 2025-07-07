@@ -1,0 +1,4 @@
+requests==2.32.4
+SQLAlchemy==2.0.30
+psycopg2-binary==2.9.9
+chromadb==1.0.15

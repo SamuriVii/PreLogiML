@@ -3,16 +3,16 @@ FROM python:3.12-slim
 WORKDIR /app
 
 # Skopiuj requirements
-COPY llm_tester/requirements.txt .
+COPY anythingllm_init/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Skopiuj shared modules
 COPY shared /app/shared
 
-# Skopiuj skrypt testera
-COPY llm_tester/llm_tester.py .
+# Skopiuj skrypt inicjatora
+COPY anythingllm_init/anythingllm_init.py .
 
 # Ustaw permissions
-RUN chmod +x llm_tester.py
+RUN chmod +x anythingllm_init.py
 
-CMD ["python", "llm_tester.py"]
+CMD ["python", "anythingllm_init.py"]

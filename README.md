@@ -10,12 +10,6 @@ KAŻDY Z SUBÓW MA PO PROSTU W SOBIE 4 FUNKCJE:
     4. Klasyfikacja
     5. ML na embeddingi
 
-
-POŁĄCZENIE DO ANYTHINGLLM TERMINALEM - DZIAŁA
-
-PS C:\Users\szymo> Invoke-WebRequest -Uri "http://localhost:3001/api/v1/workspaces" `
->>   -Headers @{
->>     "Authorization" = "Bearer VYZ40NS-HJY4G18-MAFD8EB-YF06RMA"
->>     "accept" = "application/json"
->>   } `
->>   -Method GET
+MOżEMY ZMIENIĆ DOSTAWCĘ LLM NA OPENAI - https://platform.openai.com/settings/organization/api-keys
+Pod tym linkiem generujemy klucz API.
+Klucz API: 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

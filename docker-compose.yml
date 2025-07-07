@@ -8,7 +8,6 @@ volumes:
   postgres_data:
   pgadmin_data:
   anythingllm_data:
-  ollama_models:
   chromadb_data:
 
 services:
@@ -55,23 +54,6 @@ services:
       - kafka-broker-3
 
 # !!!!!!!!!!!!!!
-# OLLAMA SERVICE
-# !!!!!!!!!!!!!!
-
-  ollama:
-    build:
-      context: ./anythingllm/ollama
-      dockerfile: Dockerfile
-    container_name: ollama
-    restart: always
-    ports:
-      - "11434:11434"
-    networks:
-      - project-net
-    volumes:
-      - ollama_models:/root/.ollama
-
-# !!!!!!!!!!!!!!
 # CHROMA SERVICE
 # !!!!!!!!!!!!!!
 
@@ -101,9 +83,7 @@ services:
     environment:
       SERVER_PORT: '3001'
       VECTOR_DB: chroma
-      LLM_PROVIDER: ollama
       CHROMA_API_BASE_URL: http://chroma:8000
-      OLLAMA_API_BASE_URL: http://ollama:11434
       STORAGE_DIR: /app/server/storage
       DISABLE_TELEMETRY: 'true'
       ADMIN_EMAIL: admin@admin.com
@@ -114,19 +94,26 @@ services:
       - project-net
     depends_on:
       - postgres
-      - ollama
+      - pgadmin
       - chroma
 
+# !!!!!!!!!!!!!!
+# ANYTHINGLLM INIT
+# !!!!!!!!!!!!!!
 
-
-
-
-
-
-
-
-
-
+  anythingllm_init:
+    build:
+      context: ./
+      dockerfile: ./anythingllm_init/Dockerfile
+    container_name: anythingllm_init
+    environment:
+      ANYTHINGLLM_API_URL: http://anythingllm:3001
+    depends_on:
+      - postgres
+      - anythingllm
+      - chroma
+    networks:
+      - project-net
 
 # !!!!!!!!!!!!!!
 # KAFKA CLUSTER
@@ -281,35 +268,3 @@ services:
     networks:
       - project-net
 
-
-
-
-
-
-
-
-
-
-
-
-
- 
-
-
-# !!!!!!!!!!!!!!
-# LLM TESTER - TO JEST CHWILOWE, ŻEBY PRZETESTOWAĆ API ANYTHINGLLM - POTEM PRZEROBI SIĘ, ŻE TO BĘDZIE TAKI KONFIGURATOR PRZYGOTOWUJĄCY ANYTHINGLLM
-# !!!!!!!!!!!!!!
-
-  # llm-tester:
-  #   build:
-  #     context: ./
-  #     dockerfile: ./llm_tester/Dockerfile
-  #   container_name: llm-tester
-  #   environment:
-  #     ANYTHINGLLM_API_URL: http://anythingllm:3001
-  #   depends_on:
-  #     - postgres
-  #     - anythingllm
-  #     - ollama
-  #   networks:
-  #     - project-net

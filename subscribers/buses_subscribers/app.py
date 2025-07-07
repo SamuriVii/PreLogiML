@@ -1,8 +1,5 @@
-from sentence_transformers import SentenceTransformer
 from typing import Optional, List, Tuple
 from kafka import KafkaConsumer
-import numpy as np
-import random
 import json
 import time
 
@@ -12,14 +9,16 @@ time.sleep(180)
 
 # --- Importy połączenia się i funkcji łączących się z PostGreSQL i innych ---
 from shared.db_utils import save_log, save_bus_data_to_base
-from shared.preprocessing_utils import enrich_data_with_environment, refactor_buses_data, rename_keys, replace_nulls, create_bus_summary_sentence, prepare_sql_record_all_fields, prepare_vector_db_record_all_fields
+from shared.preprocessing_utils import enrich_data_with_environment, refactor_buses_data, rename_keys, replace_nulls, create_bus_summary_sentence, prepare_sql_record_all_fields, prepare_vector_db_record_all_bus_fields
 from shared.clusterization.clusterization import bus_cluster_predictor
-from shared.classification.classification import bus_binary_predictor, bus_multiclass_predictor, bus_regression_predictor, get_all_predictors_status 
+from shared.classification.classification import bus_binary_predictor, bus_multiclass_predictor, bus_regression_predictor 
+from shared.anything_wrapper import add_raw_bus_text_to_anythingllm
 
 # --- Ustawienia podstawowe ---
 KAFKA_BROKER = "kafka-broker-1:9092"
 KAFKA_TOPIC = "buses"
 KAFKA_GROUP = "buses-subscriber"  
+ANYTHINGLLM_WORKSPACE_SLUG = "project"
 
 # --- Ustawienie Kafka Subscriber ---
 consumer = KafkaConsumer(
@@ -34,33 +33,9 @@ consumer = KafkaConsumer(
 print(f"✅ Subskrybent działa na topicu '{KAFKA_TOPIC}'...")
 
 # +-------------------------------------+
-# |      CZĘŚĆ ŁADUJĄCA MODEL ST        |
-# |     Proces przetwarzania danych     |
+# |       GŁÓWNA CZĘŚĆ WYKONUJĄCA       |
+# |      Proces przetwarzania danych    |
 # +-------------------------------------+
-
-# Model zostanie pobrany do lokalnego cache'u przy pierwszym uruchomieniu
-print("🔄 Ładowanie modelu SentenceTransformer: all-MiniLM-L6-v2...")
-try:
-    embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-    print("✅ Model SentenceTransformer załadowany pomyślnie!")
-    save_log("buses_subscriber", "info", "Model embeddingowy załadowany pomyślnie.")
-except Exception as e:
-    embedding_model = None
-    print(f"❌ Błąd ładowania modelu SentenceTransformer: {e}")
-    save_log("buses_subscriber", "error", f"Błąd w trakcie ładowania modelu embeddingowego: {e}")
-
-# --- Funkcja do generowania embeddingu (teraz używa SentenceTransformer) ---
-def generate_embedding(text: str) -> Optional[List[float]]:
-    if embedding_model is None:
-        print("⚠️ Model embeddingowy nie załadowany. Nie można wygenerować embeddingu.")
-        return None
-    try:
-        # Kodowanie tekstu i konwersja na listę Pythona
-        embedding = embedding_model.encode(text).tolist()
-        return embedding
-    except Exception as e:
-        print(f"❌ Błąd podczas generowania embeddingu dla tekstu '{text[:50]}...': {e}")
-        return None
 
 try:
     for message in consumer:
@@ -193,45 +168,42 @@ try:
         summary_sentence = create_bus_summary_sentence(enriched)
         print(f"\n📝 Wygenerowane zdanie podsumowujące: {summary_sentence}")
 
-        # --- Generowanie i zapis embeddingu ---
-        embedding = generate_embedding(summary_sentence)
-        if embedding is not None:
-            print("\n➡️ Wygenerowany Embedding:")
-            print(embedding)
-            save_log("subscriber_buses", "info", "Wygenerowano embedding dla danych autobusowych.")
-        else:
-            save_log("subscriber_buses", "error", "Nie udało się wygenerować embeddingu dla danych autobusowych.")
-
         # +----------------------------------------+
         # |  ŁĄCZENIE DANYCH I WYSYŁANIE DO BAZY   |
         # |     Proces przetwarzania danych        |
         # +----------------------------------------+
 
-        # Krok 1: Przygotowanie danych dla bazy SQL
-        final_sql_data = prepare_sql_record_all_fields(enriched, summary_sentence)
+        # Krok 1: Przygotowanie i wysłanie danych dla bazy SQL
+        final_data = prepare_sql_record_all_fields(enriched, summary_sentence)
         print("\n📊 Dane przygotowane dla bazy SQL (wszystkie pola zachowane):")
-        print(json.dumps(final_sql_data, indent=2, ensure_ascii=False, default=str))
+        print(json.dumps(final_data, indent=2, ensure_ascii=False, default=str))
 
         # Krok 2: Przygotowanie danych dla bazy wektorowej
-        final_vector_db_data = prepare_vector_db_record_all_fields(enriched, summary_sentence, embedding)
-        if final_vector_db_data:
-            print("\n🗃️ Struktura przygotowana dla bazy wektorowej (wszystkie metadane zachowane):")
-            # Dla czytelności, nie drukujemy całego wektora, tylko jego początek
-            printable_vector_db_data = final_vector_db_data.copy()
-            if printable_vector_db_data['vector']:
-                printable_vector_db_data['vector_preview'] = printable_vector_db_data['vector'][:5]
-                del printable_vector_db_data['vector'] # Usuwamy pełny wektor, żeby logi nie były zbyt długie
-            print(json.dumps(printable_vector_db_data, indent=2, ensure_ascii=False, default=str))
-            save_log("subscriber_buses", "info", "Dane przygotowane dla bazy wektorowej.")
+        data = prepare_vector_db_record_all_bus_fields(enriched) # Użyj nowej funkcji
+
+        if summary_sentence: # Upewnij się, że jest co wysłać
+            print("\n🗃️ Struktura przygotowana dla AnythingLLM (tekst i metadane dla autobusu):")
+            # Wydrukuj metadane bez pełnego tekstu, żeby nie zapychać logów
+            printable_anythingllm_payload = data.copy()
+            print(f"textContent_preview='{summary_sentence[:100]}...', metadata keys={list(printable_anythingllm_payload.keys())}")
+            print(f"Pełne metadane: {json.dumps(printable_anythingllm_payload, indent=2, ensure_ascii=False, default=str)}")
+            
+            save_log("subscriber_buses", "info", "Dane autobusowe przygotowane dla AnythingLLM.")
+
+            print("\n🚀 Wysyłanie danych autobusowych do AnythingLLM...")
+            add_response = add_raw_bus_text_to_anythingllm( # Użyj nowej funkcji
+                ANYTHINGLLM_WORKSPACE_SLUG,
+                summary_sentence,
+                data
+            )
+            print("Odpowiedź z AnythingLLM:", add_response)
+            if add_response.get("success"):
+                save_bus_data_to_base(final_data)
+                save_log("subscriber_buses", "info", f"Tekst autobusowy dodany do AnythingLLM dla workspace'u {ANYTHINGLLM_WORKSPACE_SLUG}.")
+            else:
+                save_log("subscriber_buses", "error", f"Błąd podczas dodawania tekstu autobusowego do AnythingLLM: {add_response.get('message')}")
         else:
-            save_log("subscriber_buses", "error", "Nie udało się przygotować danych dla bazy wektorowej.")
-
-        # Krok 3: Zapisanie danych do SQL oraz wysłanie danych do bazy wektorowej
-        save_bus_data_to_base(final_sql_data)
-
-
-
-
+            save_log("subscriber_buses", "error", "Brak summary_sentence dla autobusu, nie wysłano danych do AnythingLLM.")
 
 except KeyboardInterrupt:
     print("⛔ Subskrybent zatrzymany ręcznie (Ctrl+C).")
