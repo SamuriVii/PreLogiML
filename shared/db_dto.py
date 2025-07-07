@@ -174,3 +174,5 @@ class LLMTestResult(Base):
     response_time_ms = Column(Float, nullable=True)
     llm_error = Column(Boolean, nullable=False, default=False)
     llm_error_message = Column(Text, nullable=True)
+    bleu_score = Column(Float, nullable=True)
+    rouge_score = Column(Float, nullable=True)

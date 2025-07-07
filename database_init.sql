@@ -135,3 +135,18 @@ CREATE TABLE IF NOT EXISTS buses_data (
     average_delay_seconds_prediction_success BOOLEAN NOT NULL DEFAULT FALSE,
     summary_sentence TEXT NOT NULL DEFAULT ''
 );
+
+-- creating "llm_test_results" table
+CREATE TABLE IF NOT EXISTS llm_test_results (
+    id SERIAL PRIMARY KEY,
+    timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    question_key VARCHAR(255) NOT NULL,
+    question_text TEXT NOT NULL,
+    ground_truth TEXT NOT NULL,
+    llm_response TEXT,
+    response_time_ms FLOAT,
+    llm_error BOOLEAN NOT NULL DEFAULT FALSE,
+    llm_error_message TEXT,
+    bleu_score FLOAT,
+    rouge_score FLOAT
+);

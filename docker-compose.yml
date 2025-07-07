@@ -283,7 +283,17 @@ services:
     networks:
       - project-net
 
+# !!!!!!!!!!!!!!
+# METRICS CALCULATOR
+# !!!!!!!!!!!!!!
 
-
-
-
+  metrics-calculator:
+    build: 
+      context: ./
+      dockerfile: ./metrics_testing/Dockerfile
+    container_name: metrics-calculator
+    restart: always
+    depends_on:
+      - pgadmin
+    networks:
+      - project-net
