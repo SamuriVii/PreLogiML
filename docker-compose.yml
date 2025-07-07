@@ -268,3 +268,22 @@ services:
     networks:
       - project-net
 
+# !!!!!!!!!!!!!!
+# LLM TESTER
+# !!!!!!!!!!!!!!
+
+  llm-tester:
+    build: 
+      context: ./
+      dockerfile: ./llm_testing/Dockerfile
+    container_name: llm-tester
+    restart: always
+    depends_on:
+      - pgadmin
+    networks:
+      - project-net
+
+
+
+
+

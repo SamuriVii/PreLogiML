@@ -1,0 +1,8 @@
+sqlalchemy
+pandas
+requests
+
+SQLAlchemy==2.0.30
+psycopg2-binary==2.9.9
+pandas==2.3.0
+requests==2.32.4

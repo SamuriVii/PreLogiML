@@ -161,3 +161,16 @@ class BusesData(Base):
     average_delay_seconds_prediction_success = Column(Boolean, nullable=False, default=False)
 
     summary_sentence = Column(Text, nullable=False, default="")
+
+class LLMTestResult(Base):
+    __tablename__ = 'llm_test_results'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    timestamp = Column(TIMESTAMP(timezone=True), nullable=False, default=lambda: datetime.now(CEST)) 
+    question_key = Column(String(255), nullable=False)
+    question_text = Column(Text, nullable=False)
+    ground_truth = Column(Text, nullable=False)
+    llm_response = Column(Text, nullable=True)
+    response_time_ms = Column(Float, nullable=True)
+    llm_error = Column(Boolean, nullable=False, default=False)
+    llm_error_message = Column(Text, nullable=True)

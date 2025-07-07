@@ -25,7 +25,7 @@ def query_workspace_llm(workspace_id: str, message: str) -> Dict[Any, Any]:
     endpoint = f"/api/v1/workspace/{workspace_id}/chat"
     payload = {
         "message": message,
-        "mode": "chat"
+        "mode": "query"
     }
 
     print(f"Wysyłanie zapytania do workspace'u '{workspace_id}': '{message}'...")
