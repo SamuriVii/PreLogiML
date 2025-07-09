@@ -4,7 +4,7 @@ import json
 
 # --- Ustawienia autoryzacji dla AnythingLLM i ChromaVDB ---
 API_URL = "http://anythingllm:3001"
-API_KEY = "B2YJHSE-BBPMT0V-M74MPZ6-KAPRV2N"
+API_KEY = "WSRTR4R-VHZ4DPR-N65CYDV-6P6G06Y"
 
 CHROMA_DB_HOST = "chroma"
 CHROMA_DB_PORT = 8000

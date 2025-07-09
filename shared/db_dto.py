@@ -176,3 +176,13 @@ class LLMTestResult(Base):
     llm_error_message = Column(Text, nullable=True)
     bleu_score = Column(Float, nullable=True)
     rouge_score = Column(Float, nullable=True)
+
+class ModelStatus(Base):
+    __tablename__ = 'model_status'
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    model_name = Column(String(100), unique=True, nullable=False)
+    is_new_model_available = Column(Boolean, default=False, nullable=False)
+    last_updated = Column(TIMESTAMP(timezone=True), nullable=False, default=lambda: datetime.now(CEST))
+    quality_metric = Column(Float, nullable=True) 
+    version = Column(Integer, default=1, nullable=False)

@@ -237,6 +237,8 @@ services:
       - pgadmin
     networks:
       - project-net
+    volumes:
+      - ./shared:/app/shared
 
   buses-subscriber:
     build:  
@@ -252,6 +254,8 @@ services:
       - pgadmin
     networks:
       - project-net
+    volumes:
+      - ./shared:/app/shared
 
   environment-subscriber:
     build: 
@@ -297,3 +301,45 @@ services:
       - pgadmin
     networks:
       - project-net
+
+# !!!!!!!!!!!!!!
+# CLUSTER TRAINERS
+# !!!!!!!!!!!!!!
+
+  ml_cluster_bike_trainer:
+    build:
+      context: ./cluster_trainer/bike
+      dockerfile: Dockerfile
+    container_name: ml_cluster_bike_trainer
+    restart: on-failure
+    environment:
+      DATABASE_URL: postgresql://admin:secret123@postgres:5432/project_db
+      LOG_LEVEL: INFO
+    volumes:
+      - ./shared:/app/shared
+    networks:
+      - project-net
+    depends_on:
+      - postgres
+
+  ml_cluster_bus_trainer:
+    build:
+      context: ./cluster_trainer/buses
+      dockerfile: Dockerfile
+    container_name: ml_cluster_bus_trainer
+    restart: on-failure
+    environment:
+      DATABASE_URL: postgresql://admin:secret123@postgres:5432/project_db
+      LOG_LEVEL: INFO
+    volumes:
+      - ./shared:/app/shared
+    networks:
+      - project-net
+    depends_on:
+      - postgres
+
+# !!!!!!!!!!!!!!
+# CLASS TRAINERS
+# !!!!!!!!!!!!!!
+
+

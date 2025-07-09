@@ -8,7 +8,7 @@ print("Kontener startuje")
 time.sleep(180)
 
 # --- Importy połączenia się i funkcji łączących się z PostGreSQL i innych ---
-from shared.db_utils import save_log, save_bus_data_to_base
+from shared.db_utils import save_log, save_bus_data_to_base, get_model_status, update_model_new_available_flag
 from shared.preprocessing_utils import enrich_data_with_environment, refactor_buses_data, rename_keys, replace_nulls, create_bus_summary_sentence, prepare_sql_record_all_fields, prepare_vector_db_record_all_bus_fields
 from shared.clusterization.clusterization import bus_cluster_predictor
 from shared.classification.classification import bus_binary_predictor, bus_multiclass_predictor, bus_regression_predictor 
@@ -19,6 +19,7 @@ KAFKA_BROKER = "kafka-broker-1:9092"
 KAFKA_TOPIC = "buses"
 KAFKA_GROUP = "buses-subscriber"  
 ANYTHINGLLM_WORKSPACE_SLUG = "project"
+CLUSTER_MODEL_NAME = "buses_kmeans"
 
 # --- Ustawienie Kafka Subscriber ---
 consumer = KafkaConsumer(
@@ -32,6 +33,37 @@ consumer = KafkaConsumer(
 
 print(f"✅ Subskrybent działa na topicu '{KAFKA_TOPIC}'...")
 
+# +------------------------------------+
+# |  FUNKCJE PRZEŁADOWUJĄCE MODELE ML  |
+# |     Proces przetwarzania danych    |
+# +------------------------------------+
+
+# --- Funkcja do sprawdzania i przeładowywania modelu Klasteryzacji ---
+def cluster_model_check():
+    save_log(f"subscriber_buses", "info", f"Rozpoczynam sprawdzanie statusu modelu '{CLUSTER_MODEL_NAME}'.")
+    print(f"🔄 Sprawdzam status modelu '{CLUSTER_MODEL_NAME}'...")
+
+    model_status = get_model_status(CLUSTER_MODEL_NAME)
+
+    if model_status and model_status.is_new_model_available:
+        print(f"🚨 Nowa wersja modelu '{CLUSTER_MODEL_NAME}' dostępna! Rozpoczynam przeładowanie...")
+        save_log(f"subscriber_buses", "info", f"Nowa wersja modelu '{CLUSTER_MODEL_NAME}' jest dostępna. Przystępuję do przeładowania.")
+
+        # Przeładowanie modelu
+        if bus_cluster_predictor.reload_model():
+            print(f"✅ Model '{CLUSTER_MODEL_NAME}' pomyślnie przeładowany. Resetuję flagę w bazie danych.")
+            save_log(f"subscriber_buses", "info", f"Model '{CLUSTER_MODEL_NAME}' pomyślnie przeładowany. Resetuję flagę w bazie danych.")
+            # Aktualizacja flagi w bazie danych
+            update_model_new_available_flag(CLUSTER_MODEL_NAME, False)
+            print(f"✅ Flaga 'is_new_model_available' dla '{CLUSTER_MODEL_NAME}' ustawiona na False.")
+        else:
+            print(f"❌ Błąd podczas przeładowywania modelu '{CLUSTER_MODEL_NAME}'. Flaga nie została zresetowana.")
+            save_log(f"subscriber_buses", "error", f"Błąd podczas przeładowywania modelu '{CLUSTER_MODEL_NAME}'. Flaga nie została zresetowana.")
+    else:
+        print(f"☑️ Model '{CLUSTER_MODEL_NAME}' aktualny (is_new_model_available={model_status.is_new_model_available if model_status else 'Brak wpisu'}).")
+        if not model_status:
+            save_log(f"subscriber_buses", "warning", f"Brak wpisu dla modelu '{CLUSTER_MODEL_NAME}' w bazie danych ModelStatus.")
+
 # +-------------------------------------+
 # |       GŁÓWNA CZĘŚĆ WYKONUJĄCA       |
 # |      Proces przetwarzania danych    |
@@ -39,6 +71,9 @@ print(f"✅ Subskrybent działa na topicu '{KAFKA_TOPIC}'...")
 
 try:
     for message in consumer:
+        # --- Sprawdzenie modelu Klasteryzacji na początku każdej iteracji pętli ---
+        cluster_model_check()
+
         data = message.value
         data = refactor_buses_data(data)
 

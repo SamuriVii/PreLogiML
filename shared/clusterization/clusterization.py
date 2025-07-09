@@ -34,12 +34,24 @@ class BikeStationClusterPredictor:
     # Inicjalizuje predyktor z wczytanym modelem
     def __init__(self, model_path='/app/shared/clusterization/models/bikes_kmeans.pkl'):
         self.model_path = model_path
+        self.model_name = os.path.basename(model_path).replace('.pkl', '') 
+        self.new_model_path = model_path.replace('.pkl', '_new.pkl')
         self.model_data = None
         self.kmeans = None
         self.scaler = None
         self.label_encoder = None
         self.feature_names = None
         self.is_loaded = False
+        
+        # Przy inicjalizacji, jeśli istnieje "_new" plik, zastąp nim główny
+        if os.path.exists(self.new_model_path):
+            save_log(self.model_name, "info", f"Znaleziono nowy model {self.new_model_path} przy starcie. Przenoszę go na główną ścieżkę.")
+            try:
+                if os.path.exists(self.model_path):
+                    os.remove(self.model_path) # Usuń stary model, jeśli istnieje
+                os.rename(self.new_model_path, self.model_path) # Przemianuj nowy na główny
+            except Exception as e:
+                save_log(self.model_name, "error", f"Błąd przy przenoszeniu {self.new_model_path} na {self.model_path} podczas startu: {e}")
         
         self.load_model()
     
@@ -191,9 +203,44 @@ class BikeStationClusterPredictor:
     
     # Przeładowuje model z dysku
     def reload_model(self) -> bool:
-        print("🔄 Przeładowywanie modelu...")
-        save_log("cluster_bikes", "info", f"Przeładowywanie modelu.")
-        return self.load_model()
+        save_log(self.model_name, "info", f"🔄 Rozpoczynam przeładowywanie modelu '{self.model_name}'...")
+        print(f"🔄 Przeładowywanie modelu '{self.model_name}'...")
+        
+        # Sprawdź, czy nowy plik modelu istnieje
+        if not os.path.exists(self.new_model_path):
+            save_log(self.model_name, "warning", f"Brak nowego pliku modelu do przeładowania: {self.new_model_path}")
+            print(f"⚠️ Brak nowego pliku modelu do przeładowania: {self.new_model_path}")
+            return False
+
+        try:
+            # 1. Usuń stary plik modelu (jeśli istnieje), aby zrobić miejsce na nowy
+            if os.path.exists(self.model_path):
+                os.remove(self.model_path)
+                save_log(self.model_name, "info", f"Usunięto stary plik modelu: {self.model_path}")
+                print(f"Usunięto stary plik modelu: {self.model_path}")
+            
+            # 2. Zmień nazwę nowego pliku na "główny" plik modelu
+            # Ta operacja jest atomowa na większości systemów plików.
+            os.rename(self.new_model_path, self.model_path)
+            save_log(self.model_name, "info", f"Zmieniono nazwę {self.new_model_path} na {self.model_path}.")
+            print(f"Zmieniono nazwę {self.new_model_path} na {self.model_path}.")
+            
+            # 3. Załaduj nowo podmieniony model
+            if self.load_model():
+                save_log(self.model_name, "info", f"Model '{self.model_name}' pomyślnie przeładowany.")
+                print(f"✅ Model '{self.model_name}' pomyślnie przeładowany.")
+                return True
+            else:
+                # Jeśli ładowanie się nie powiodło po podmianie, to jest problem
+                save_log(self.model_name, "error", f"Nie udało się załadować nowo podmienionego modelu '{self.model_name}'.")
+                print(f"❌ Nie udało się załadować nowo podmienionego modelu '{self.model_name}'.")
+                return False
+                
+        except Exception as e:
+            save_log(self.model_name, "error", f"Błąd podczas atomowej podmiany modelu '{self.model_name}': {e}")
+            print(f"❌ Błąd podczas atomowej podmiany modelu '{self.model_name}': {e}")
+            self.is_loaded = False # Upewnij się, że flaga jest False w przypadku błędu
+            return False
 
 # +--------------------------------------------------+
 # |      KLASA MODELU AUTOBUSOWE KLASTERYZACJI       |
@@ -226,12 +273,23 @@ class BusClusterPredictor:
     # Inicjalizuje predyktor z wczytanym modelem
     def __init__(self, model_path='/app/shared/clusterization/models/buses_kmeans.pkl'):
         self.model_path = model_path
+        self.model_name = os.path.basename(model_path).replace('.pkl', '') 
+        self.new_model_path = model_path.replace('.pkl', '_new.pkl')
         self.model_data = None
         self.kmeans = None
         self.scaler = None
         self.label_encoder = None
         self.feature_names = None
         self.is_loaded = False
+        # Przy inicjalizacji, jeśli istnieje "_new" plik, zastąp nim główny
+        if os.path.exists(self.new_model_path):
+            save_log(self.model_name, "info", f"Znaleziono nowy model {self.new_model_path} przy starcie. Przenoszę go na główną ścieżkę.")
+            try:
+                if os.path.exists(self.model_path):
+                    os.remove(self.model_path) # Usuń stary model, jeśli istnieje
+                os.rename(self.new_model_path, self.model_path) # Przemianuj nowy na główny
+            except Exception as e:
+                save_log(self.model_name, "error", f"Błąd przy przenoszeniu {self.new_model_path} na {self.model_path} podczas startu: {e}")
         
         self.load_model()
     
@@ -387,9 +445,50 @@ class BusClusterPredictor:
     
     # Przeładowuje model z dysku
     def reload_model(self) -> bool:
-        print("🔄 Przeładowywanie modelu...")
-        save_log("cluster_buses", "info", f"Przeładowywanie modelu.")
-        return self.load_model()
+        save_log(self.model_name, "info", f"🔄 Rozpoczynam przeładowywanie modelu '{self.model_name}'...")
+        print(f"🔄 Przeładowywanie modelu '{self.model_name}'...")
+        
+        # Sprawdź, czy nowy plik modelu istnieje
+        if not os.path.exists(self.new_model_path):
+            save_log(self.model_name, "warning", f"Brak nowego pliku modelu do przeładowania: {self.new_model_path}")
+            print(f"⚠️ Brak nowego pliku modelu do przeładowania: {self.new_model_path}")
+            return False
+
+        try:
+            # 1. Usuń stary plik modelu (jeśli istnieje), aby zrobić miejsce na nowy
+            if os.path.exists(self.model_path):
+                os.remove(self.model_path)
+                save_log(self.model_name, "info", f"Usunięto stary plik modelu: {self.model_path}")
+                print(f"Usunięto stary plik modelu: {self.model_path}")
+            
+            # 2. Zmień nazwę nowego pliku na "główny" plik modelu
+            # Ta operacja jest atomowa na większości systemów plików.
+            os.rename(self.new_model_path, self.model_path)
+            save_log(self.model_name, "info", f"Zmieniono nazwę {self.new_model_path} na {self.model_path}.")
+            print(f"Zmieniono nazwę {self.new_model_path} na {self.model_path}.")
+            
+            # 3. Załaduj nowo podmieniony model
+            if self.load_model():
+                save_log(self.model_name, "info", f"Model '{self.model_name}' pomyślnie przeładowany.")
+                print(f"✅ Model '{self.model_name}' pomyślnie przeładowany.")
+                return True
+            else:
+                # Jeśli ładowanie się nie powiodło po podmianie, to jest problem
+                save_log(self.model_name, "error", f"Nie udało się załadować nowo podmienionego modelu '{self.model_name}'.")
+                print(f"❌ Nie udało się załadować nowo podmienionego modelu '{self.model_name}'.")
+                return False
+                
+        except Exception as e:
+            save_log(self.model_name, "error", f"Błąd podczas atomowej podmiany modelu '{self.model_name}': {e}")
+            print(f"❌ Błąd podczas atomowej podmiany modelu '{self.model_name}': {e}")
+            self.is_loaded = False # Upewnij się, że flaga jest False w przypadku błędu
+            return False
+
+
+
+
+
+
 
 # +--------------------------------------------------+
 # |     FUNKCJE DODATKOWE DO ZARZĄDZANIA MODELAMI    |

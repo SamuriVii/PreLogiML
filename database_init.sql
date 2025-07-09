@@ -150,3 +150,13 @@ CREATE TABLE IF NOT EXISTS llm_test_results (
     bleu_score FLOAT,
     rouge_score FLOAT
 );
+
+-- creating "model_status" table
+CREATE TABLE IF NOT EXISTS model_status (
+    id SERIAL PRIMARY KEY,
+    model_name VARCHAR(100) UNIQUE NOT NULL,
+    is_new_model_available BOOLEAN NOT NULL DEFAULT FALSE,
+    last_updated TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    quality_metric FLOAT,
+    version INTEGER NOT NULL DEFAULT 1
+);
