@@ -484,12 +484,6 @@ class BusClusterPredictor:
             self.is_loaded = False # Upewnij się, że flaga jest False w przypadku błędu
             return False
 
-
-
-
-
-
-
 # +--------------------------------------------------+
 # |     FUNKCJE DODATKOWE DO ZARZĄDZANIA MODELAMI    |
 # |             Funkcje do zarządzania               |

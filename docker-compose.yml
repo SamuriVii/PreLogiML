@@ -312,9 +312,6 @@ services:
       dockerfile: Dockerfile
     container_name: ml_cluster_bike_trainer
     restart: on-failure
-    environment:
-      DATABASE_URL: postgresql://admin:secret123@postgres:5432/project_db
-      LOG_LEVEL: INFO
     volumes:
       - ./shared:/app/shared
     networks:
@@ -328,9 +325,6 @@ services:
       dockerfile: Dockerfile
     container_name: ml_cluster_bus_trainer
     restart: on-failure
-    environment:
-      DATABASE_URL: postgresql://admin:secret123@postgres:5432/project_db
-      LOG_LEVEL: INFO
     volumes:
       - ./shared:/app/shared
     networks:
@@ -342,4 +336,28 @@ services:
 # CLASS TRAINERS
 # !!!!!!!!!!!!!!
 
+  ml_class_bike_trainer:
+    build:
+      context: ./class_trainer/bike
+      dockerfile: Dockerfile
+    container_name: ml_class_bike_trainer
+    restart: on-failure
+    volumes:
+      - ./shared:/app/shared
+    networks:
+      - project-net
+    depends_on:
+      - postgres
 
+  ml_class_bus_trainer:
+    build:
+      context: ./class_trainer/buses
+      dockerfile: Dockerfile
+    container_name: ml_class_bus_trainer
+    restart: on-failure
+    volumes:
+      - ./shared:/app/shared
+    networks:
+      - project-net
+    depends_on:
+      - postgres

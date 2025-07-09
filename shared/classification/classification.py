@@ -47,9 +47,10 @@ class BasePredictor:
     def __init__(self, model_type: str, data_source: str, model_name: str):
         self.model_type = model_type 
         self.data_source = data_source
-        self.model_name = model_name
+        self.raw_model_name = model_name
         self.model_path = os.path.join(BASE_MODEL_PATH, model_name)
-        
+        self.new_model_path = self.model_path.replace('.pkl', '_new.pkl')
+
         self.model = None
         self.scaler = None
         self.label_encoder = None
@@ -57,6 +58,23 @@ class BasePredictor:
         self.is_loaded = False
         self.load_status_message = "Model nie został jeszcze załadowany."
 
+        # Przy inicjalizacji, jeśli istnieje "_new" plik, zastąp nim główny
+        if os.path.exists(self.new_model_path):
+            log_identifier = f"{self.data_source}_{self.model_type}_predictor"
+            save_log(log_identifier, "info", f"Znaleziono nowy model {self.new_model_path} przy starcie. Przenoszę go na główną ścieżkę.")
+            print(f"Znaleziono nowy model {self.new_model_path} przy starcie. Przenoszę go na główną ścieżkę.")
+            try:
+                if os.path.exists(self.model_path):
+                    os.remove(self.model_path) # Usuń stary model, jeśli istnieje
+                    save_log(log_identifier, "info", f"Usunięto stary plik modelu: {self.model_path}")
+                    print(f"Usunięto stary plik modelu: {self.model_path}")
+                os.rename(self.new_model_path, self.model_path) # Przemianuj nowy na główny
+                save_log(log_identifier, "info", f"Zmieniono nazwę {self.new_model_path} na {self.model_path}.")
+                print(f"Zmieniono nazwę {self.new_model_path} na {self.model_path}.")
+            except Exception as e:
+                save_log(log_identifier, "error", f"Błąd przy przenoszeniu {self.new_model_path} na {self.model_path} podczas startu: {e}")
+                print(f"Błąd przy przenoszeniu {self.new_model_path} na {self.model_path} podczas startu: {e}")
+        
         self.load_model()
 
     # Wczytuje zapisany model i wszystkie komponenty (model, scaler, feature_names).
@@ -84,13 +102,13 @@ class BasePredictor:
                 return False
 
             self.is_loaded = True
-            self.load_status_message = f"✅ Model '{self.model_name}' załadowany pomyślnie!"
+            self.load_status_message = f"✅ Model '{self.raw_model_name}' załadowany pomyślnie!"
             save_log("class_module", "info", "Model klasyfikacji został załadowany pomyślnie")
             print(self.load_status_message)
             return True
             
         except Exception as e:
-            self.load_status_message = f"❌ Błąd ładowania modelu '{self.model_name}': {e}"
+            self.load_status_message = f"❌ Błąd ładowania modelu '{self.raw_model_name}': {e}"
             save_log("class_module", "erro", f"Wystąpił błąd przy ładowaniu modelu klasyfikacji: {e}.")
             print(self.load_status_message)
             self.is_loaded = False
@@ -101,6 +119,7 @@ class BasePredictor:
         return {
             'loaded': self.is_loaded,
             'model_path': self.model_path,
+            'raw_model_name': self.raw_model_name,
             'model_type': self.model_type,
             'data_source': self.data_source,
             'status_message': self.load_status_message,
@@ -109,9 +128,45 @@ class BasePredictor:
 
     # Przeładowuje model z dysku
     def reload_model(self) -> bool:
-        save_log("class_module", "info", "Model klasyfikacji został przeładowany")
-        print(f"🔄 Przeładowywanie modelu {self.model_name}...")
-        return self.load_model()
+        log_identifier = f"{self.data_source}_{self.model_type}_predictor"
+        save_log(log_identifier, "info", f"🔄 Rozpoczynam przeładowywanie modelu '{self.raw_model_name}'...")
+        print(f"🔄 Przeładowywanie modelu '{self.raw_model_name}'...")
+        
+        # Sprawdź, czy nowy plik modelu istnieje
+        if not os.path.exists(self.new_model_path):
+            save_log(log_identifier, "warning", f"Brak nowego pliku modelu do przeładowania: {self.new_model_path}")
+            print(f"⚠️ Brak nowego pliku modelu do przeładowania: {self.new_model_path}")
+            return False
+
+        try:
+            # 1. Usuń stary plik modelu (jeśli istnieje), aby zrobić miejsce na nowy
+            if os.path.exists(self.model_path):
+                os.remove(self.model_path)
+                save_log(log_identifier, "info", f"Usunięto stary plik modelu: {self.model_path}")
+                print(f"Usunięto stary plik modelu: {self.model_path}")
+            
+            # 2. Zmień nazwę nowego pliku na "główny" plik modelu
+            # Ta operacja jest atomowa na większości systemów plików.
+            os.rename(self.new_model_path, self.model_path)
+            save_log(log_identifier, "info", f"Zmieniono nazwę {self.new_model_path} na {self.model_path}.")
+            print(f"Zmieniono nazwę {self.new_model_path} na {self.model_path}.")
+            
+            # 3. Załaduj nowo podmieniony model
+            if self.load_model():
+                save_log(log_identifier, "info", f"Model '{self.raw_model_name}' pomyślnie przeładowany.")
+                print(f"✅ Model '{self.raw_model_name}' pomyślnie przeładowany.")
+                return True
+            else:
+                # Jeśli ładowanie się nie powiodło po podmianie, to jest problem
+                save_log(log_identifier, "error", f"Nie udało się załadować nowo podmienionego modelu '{self.raw_model_name}'.")
+                print(f"❌ Nie udało się załadować nowo podmienionego modelu '{self.raw_model_name}'.")
+                return False
+                
+        except Exception as e:
+            save_log(log_identifier, "error", f"Błąd podczas atomowej podmiany modelu '{self.raw_model_name}': {e}")
+            print(f"❌ Błąd podczas atomowej podmiany modelu '{self.raw_model_name}': {e}")
+            self.is_loaded = False # Upewnij się, że flaga jest False w przypadku błędu
+            return False
 
     # Wewnętrzna metoda do przygotowywania cech z dict'a.
     def _prepare_features(self, data_dict: Dict, feature_mapping: Dict) -> Optional[pd.DataFrame]:
@@ -129,7 +184,7 @@ class BasePredictor:
                 missing_keys.append(dict_key)
         
         if missing_keys:
-            print(f"⚠️ Brakuje kluczy w danych dla modelu '{self.model_name}': {missing_keys}")
+            print(f"⚠️ Brakuje kluczy w danych dla modelu '{self.raw_model_name}': {missing_keys}")
             return None
 
         try:
@@ -140,7 +195,7 @@ class BasePredictor:
                 if 'daylight' in self.feature_names: # Sprawdź czy model oczekuje 'daylight' jako numeryczne
                     df['daylight'] = df['daylight'].map({'yes': 1, 'no': 0}).fillna(0) # Użyj 0 jako fallback
                     if df['daylight'].isnull().any():
-                        print(f"⚠️ Nieznana wartość 'daylight' dla modelu '{self.model_name}'. Użyto 0.")
+                        print(f"⚠️ Nieznana wartość 'daylight' dla modelu '{self.raw_model_name}'. Użyto 0.")
 
             # Obsługa 'weather_condition' jeśli istnieje i jest enkodowana
             if 'weather_condition' in df.columns and 'weather_condition_encoded' in self.feature_names:
@@ -149,7 +204,7 @@ class BasePredictor:
                     try:
                         df['weather_condition_encoded'] = self.label_encoder.transform(df['weather_condition'])
                     except ValueError:
-                        print(f"⚠️ Nieznana wartość weather_condition: '{original_weather}' dla modelu '{self.model_name}'")
+                        print(f"⚠️ Nieznana wartość weather_condition: '{original_weather}' dla modelu '{self.raw_model_name}'")
                         known_classes = list(self.label_encoder.classes_)
                         if 'unknown' in known_classes:
                             print(f"🔄 Mapuję '{original_weather}' -> 'unknown'")
@@ -161,14 +216,14 @@ class BasePredictor:
                             df['weather_condition'] = fallback_weather
                             df['weather_condition_encoded'] = self.label_encoder.transform(df['weather_condition'])
                         else:
-                            print(f"❌ Brak znanych klas dla 'weather_condition' w modelu '{self.model_name}'. Nie można zakodować.")
+                            print(f"❌ Brak znanych klas dla 'weather_condition' w modelu '{self.raw_model_name}'. Nie można zakodować.")
                             return None
                     df = df.drop('weather_condition', axis=1)
                 else:
-                    print(f"⚠️ Brak LabelEncoder dla 'weather_condition' w modelu '{self.model_name}'. Pomijam enkodowanie.")
+                    print(f"⚠️ Brak LabelEncoder dla 'weather_condition' w modelu '{self.raw_model_name}'. Pomijam enkodowanie.")
                     # Jeśli model oczekuje 'weather_condition_encoded' ale nie ma encodera, to jest problem
                     if 'weather_condition_encoded' in self.feature_names:
-                        print(f"❌ Model '{self.model_name}' oczekuje 'weather_condition_encoded' ale brak LabelEncoder. Predykcja niemożliwa.")
+                        print(f"❌ Model '{self.raw_model_name}' oczekuje 'weather_condition_encoded' ale brak LabelEncoder. Predykcja niemożliwa.")
                         return None
                     else: # Jeśli model nie oczekuje zakodowanego, to po prostu usuń oryginalną kolumnę
                         df = df.drop('weather_condition', axis=1)
@@ -184,13 +239,13 @@ class BasePredictor:
                     processed_df[col] = 0
             
             if processed_df.isnull().any().any():
-                print(f"⚠️ Dane po przygotowaniu dla modelu '{self.model_name}' zawierają wartości NaN.")
+                print(f"⚠️ Dane po przygotowaniu dla modelu '{self.raw_model_name}' zawierają wartości NaN.")
                 return None
             save_log("class_module", "info", "Dane zostały przygotowane dla modelu klasyfikacji.")
             return processed_df
             
         except Exception as e:
-            print(f"❌ Błąd przygotowywania cech dla modelu '{self.model_name}': {e}")
+            print(f"❌ Błąd przygotowywania cech dla modelu '{self.raw_model_name}': {e}")
             return None
 
 # +--------------------------------------------------+

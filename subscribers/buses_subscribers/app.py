@@ -20,6 +20,9 @@ KAFKA_TOPIC = "buses"
 KAFKA_GROUP = "buses-subscriber"  
 ANYTHINGLLM_WORKSPACE_SLUG = "project"
 CLUSTER_MODEL_NAME = "buses_kmeans"
+CLASS_MODEL_A = "buses_binary_classifier"
+CLASS_MODEL_B = "buses_multiclass_classifier"
+CLASS_MODEL_C = "buses_regression_predictor"
 
 # --- Ustawienie Kafka Subscriber ---
 consumer = KafkaConsumer(
@@ -64,6 +67,84 @@ def cluster_model_check():
         if not model_status:
             save_log(f"subscriber_buses", "warning", f"Brak wpisu dla modelu '{CLUSTER_MODEL_NAME}' w bazie danych ModelStatus.")
 
+# --- Funkcja do sprawdzania i przeładowywania modelu Klasyfikacji A (Binarny) ---
+def class_model_A_check():
+    save_log(f"subscriber_bikes", "info", f"Rozpoczynam sprawdzanie statusu modelu '{CLASS_MODEL_A}'.")
+    print(f"🔄 Sprawdzam status modelu '{CLASS_MODEL_A}'...")
+
+    model_status = get_model_status(CLASS_MODEL_A)
+
+    if model_status and model_status.is_new_model_available:
+        print(f"🚨 Nowa wersja modelu '{CLASS_MODEL_A}' dostępna! Rozpoczynam przeładowanie...")
+        save_log(f"subscriber_bikes", "info", f"Nowa wersja modelu '{CLASS_MODEL_A}' jest dostępna. Przystępuję do przeładowania.")
+
+        # Przeładowanie modelu
+        if bus_binary_predictor.reload_model(): # Tutaj zmieniono na bike_binary_predictor
+            print(f"✅ Model '{CLASS_MODEL_A}' pomyślnie przeładowany. Resetuję flagę w bazie danych.")
+            save_log(f"subscriber_bikes", "info", f"Model '{CLASS_MODEL_A}' pomyślnie przeładowany. Resetuję flagę w bazie danych.")
+            # Aktualizacja flagi w bazie danych
+            update_model_new_available_flag(CLASS_MODEL_A, False)
+            print(f"✅ Flaga 'is_new_model_available' dla '{CLASS_MODEL_A}' ustawiona na False.")
+        else:
+            print(f"❌ Błąd podczas przeładowywania modelu '{CLASS_MODEL_A}'. Flaga nie została zresetowana.")
+            save_log(f"subscriber_bikes", "error", f"Błąd podczas przeładowywania modelu '{CLASS_MODEL_A}'. Flaga nie została zresetowana.")
+    else:
+        print(f"☑️ Model '{CLASS_MODEL_A}' aktualny (is_new_model_available={model_status.is_new_model_available if model_status else 'Brak wpisu'}).")
+        if not model_status:
+            save_log(f"subscriber_bikes", "warning", f"Brak wpisu dla modelu '{CLASS_MODEL_A}' w bazie danych ModelStatus.")
+
+# --- Funkcja do sprawdzania i przeładowywania modelu Klasyfikacji B (Wieloklasowy) ---
+def class_model_B_check():
+    save_log(f"subscriber_bikes", "info", f"Rozpoczynam sprawdzanie statusu modelu '{CLASS_MODEL_B}'.")
+    print(f"🔄 Sprawdzam status modelu '{CLASS_MODEL_B}'...")
+
+    model_status = get_model_status(CLASS_MODEL_B)
+
+    if model_status and model_status.is_new_model_available:
+        print(f"🚨 Nowa wersja modelu '{CLASS_MODEL_B}' dostępna! Rozpoczynam przeładowanie...")
+        save_log(f"subscriber_bikes", "info", f"Nowa wersja modelu '{CLASS_MODEL_B}' jest dostępna. Przystępuję do przeładowania.")
+
+        # Przeładowanie modelu
+        if bus_multiclass_predictor.reload_model():
+            print(f"✅ Model '{CLASS_MODEL_B}' pomyślnie przeładowany. Resetuję flagę w bazie danych.")
+            save_log(f"subscriber_bikes", "info", f"Model '{CLASS_MODEL_B}' pomyślnie przeładowany. Resetuję flagę w bazie danych.")
+            # Aktualizacja flagi w bazie danych
+            update_model_new_available_flag(CLASS_MODEL_B, False)
+            print(f"✅ Flaga 'is_new_model_available' dla '{CLASS_MODEL_B}' ustawiona na False.")
+        else:
+            print(f"❌ Błąd podczas przeładowywania modelu '{CLASS_MODEL_B}'. Flaga nie została zresetowana.")
+            save_log(f"subscriber_bikes", "error", f"Błąd podczas przeładowywania modelu '{CLASS_MODEL_B}'. Flaga nie została zresetowana.")
+    else:
+        print(f"☑️ Model '{CLASS_MODEL_B}' aktualny (is_new_model_available={model_status.is_new_model_available if model_status else 'Brak wpisu'}).")
+        if not model_status:
+            save_log(f"subscriber_bikes", "warning", f"Brak wpisu dla modelu '{CLASS_MODEL_B}' w bazie danych ModelStatus.")
+
+# --- Funkcja do sprawdzania i przeładowywania modelu Klasyfikacji C (Regresja) ---
+def class_model_C_check():
+    save_log(f"subscriber_bikes", "info", f"Rozpoczynam sprawdzanie statusu modelu '{CLASS_MODEL_C}'.")
+    print(f"🔄 Sprawdzam status modelu '{CLASS_MODEL_C}'...")
+
+    model_status = get_model_status(CLASS_MODEL_C)
+
+    if model_status and model_status.is_new_model_available:
+        print(f"🚨 Nowa wersja modelu '{CLASS_MODEL_C}' dostępna! Rozpoczynam przeładowanie...")
+        save_log(f"subscriber_bikes", "info", f"Nowa wersja modelu '{CLASS_MODEL_C}' jest dostępna. Przystępuję do przeładowania.")
+
+        # Przeładowanie modelu
+        if bus_regression_predictor.reload_model():
+            print(f"✅ Model '{CLASS_MODEL_C}' pomyślnie przeładowany. Resetuję flagę w bazie danych.")
+            save_log(f"subscriber_bikes", "info", f"Model '{CLASS_MODEL_C}' pomyślnie przeładowany. Resetuję flagę w bazie danych.")
+            # Aktualizacja flagi w bazie danych
+            update_model_new_available_flag(CLASS_MODEL_C, False)
+            print(f"✅ Flaga 'is_new_model_available' dla '{CLASS_MODEL_C}' ustawiona na False.")
+        else:
+            print(f"❌ Błąd podczas przeładowywania modelu '{CLASS_MODEL_C}'. Flaga nie została zresetowana.")
+            save_log(f"subscriber_bikes", "error", f"Błąd podczas przeładowywania modelu '{CLASS_MODEL_C}'. Flaga nie została zresetowana.")
+    else:
+        print(f"☑️ Model '{CLASS_MODEL_C}' aktualny (is_new_model_available={model_status.is_new_model_available if model_status else 'Brak wpisu'}).")
+        if not model_status:
+            save_log(f"subscriber_bikes", "warning", f"Brak wpisu dla modelu '{CLASS_MODEL_C}' w bazie danych ModelStatus.")
+
 # +-------------------------------------+
 # |       GŁÓWNA CZĘŚĆ WYKONUJĄCA       |
 # |      Proces przetwarzania danych    |
@@ -73,6 +154,9 @@ try:
     for message in consumer:
         # --- Sprawdzenie modelu Klasteryzacji na początku każdej iteracji pętli ---
         cluster_model_check()
+        class_model_A_check()
+        class_model_B_check()
+        class_model_C_check()
 
         data = message.value
         data = refactor_buses_data(data)
