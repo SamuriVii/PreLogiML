@@ -1,26 +1,27 @@
-import pandas as pd
-import numpy as np
+from sklearn.metrics import classification_report, mean_squared_error, r2_score, accuracy_score
+from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.linear_model import LogisticRegression, LinearRegression
 from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.metrics import classification_report, mean_squared_error, r2_score, accuracy_score
+import pandas as pd
+import numpy as np
 import joblib
-import os
 import time
+import os
 
-from sqlalchemy.orm import Session
-from sqlalchemy import select, inspect # Dodajemy 'inspect' do inspekcji DTO
+# --- Opóźnienie startu ---
+print("Kontener startuje")
+time.sleep(180)
+
+# --- Importy połączenia się i funkcji łączących się z PostGreSQL i innych ---
+from shared.db_dto import BikesData, ModelStatus, CEST
 from datetime import datetime, timedelta
 from shared.db_conn import SessionLocal
-from shared.db_dto import BikesData, ModelStatus, CEST
+from sqlalchemy import select, inspect
 from shared.db_utils import save_log
+from sqlalchemy.orm import Session
 
-# --- Opóźnienie startu kontenera ---
-print("Kontener ml_class_bike_trainer startuje...")
-time.sleep(60) # Daj czas na start bazy danych
-
-# --- Ustawienia podstawowe ---
+# --- Ustawienia ---
 MODEL_DIR = '/app/shared/classification/models/'
 MODEL_SAVE_PATH_BINARY = os.path.join(MODEL_DIR, 'bike_binary_model_new.pkl')
 MODEL_SAVE_PATH_MULTICLASS = os.path.join(MODEL_DIR, 'bike_multiclass_model_new.pkl')
@@ -31,9 +32,10 @@ TRAINING_CYCLE_INTERVAL_HOURS = 12 # Jak często ma się odbywać trening (np. c
 # Upewnij się, że katalog na modele istnieje
 os.makedirs(MODEL_DIR, exist_ok=True)
 
-# +--------------------------------------------------+
-# |                FUNKCJE POMOCNICZE DO TRENINGU    |
-# +--------------------------------------------------+
+# +-------------------------------------------------+
+# |           KOLUMNY DO TRENINGU MODELI            |
+# |         Trenowanie Modeli Klasyfikacji          |
+# +-------------------------------------------------+
 
 # Globalne listy kolumn, aby były dostępne w obu funkcjach
 FEATURE_COLUMNS_BASE = [
@@ -46,11 +48,14 @@ FEATURE_COLUMNS_BASE = [
 
 TARGET_CALCULATION_COLUMNS = ['bikes_available', 'capacity'] 
 
+# +-------------------------------------------------+
+# |         FUNKCJE POMOCNICZE DO TRENINGU          |
+# |         Trenowanie Modeli Klasyfikacji          |
+# +-------------------------------------------------+
+
+# Pobiera dane rowerowe z bazy danych dla określonego interwału czasowego, wybierając tylko niezbędne kolumny do treningu i obliczenia celów.
 def fetch_bike_data_for_training(session: Session, interval_days: int) -> pd.DataFrame:
-    """
-    Pobiera dane rowerowe z bazy danych dla określonego interwału czasowego,
-    wybierając tylko niezbędne kolumny do treningu i obliczenia celów.
-    """
+
     start_time = datetime.now(CEST) - timedelta(days=interval_days)
 
     # Dynamiczne budowanie listy kolumn do pobrania z DTO
@@ -81,13 +86,9 @@ def fetch_bike_data_for_training(session: Session, interval_days: int) -> pd.Dat
     save_log("class_bike_trainer", "info", f"Pobrano {len(df)} rekordów danych rowerowych do treningu z ostatnich {interval_days} dni.")
     return df
 
+# Przygotowuje cechy i zmienne docelowe do treningu modeli dla danych rowerowych. Zwraca przetworzony DataFrame z cechami, zmienne docelowe oraz LabelEncodery.
 def prepare_features_and_targets(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series, pd.Series, pd.Series, LabelEncoder, LabelEncoder]:
-    """
-    Przygotowuje cechy i zmienne docelowe do treningu modeli dla danych rowerowych.
-    Zwraca przetworzony DataFrame z cechami, zmienne docelowe oraz LabelEncodery.
-    """
-    
-    # Kopia DataFrame do pracy, ponieważ fetch_bike_data_for_training już pobrało tylko potrzebne kolumny
+
     df_processed = df.copy()
 
     # Sprawdzenie obecności kluczowych kolumn docelowych
@@ -95,7 +96,6 @@ def prepare_features_and_targets(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Ser
         missing = [col for col in TARGET_CALCULATION_COLUMNS if col not in df_processed.columns]
         save_log("class_bike_trainer", "error", f"Brak kluczowych kolumn docelowych {missing} w danych. Nie można przygotować celów.")
         raise ValueError(f"Brak wymaganych kolumn dla zmiennych docelowych: {missing}.")
-
 
     # --- DODATKOWE LOGOWANIE DLA DIAGNOSTYKI ---
     save_log("class_bike_trainer", "info", f"prepare_features_and_targets: Kształt df_processed po pobraniu: {df_processed.shape}")
@@ -114,8 +114,8 @@ def prepare_features_and_targets(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Ser
         if df_processed[col].dtype in ['int64', 'float64']:
             if df_processed[col].isnull().any():
                 mean_val = df_processed[col].mean()
-                if pd.isna(mean_val): # Jeśli średnia jest NaN (np. kolumna sama z samych NaN)
-                    df_processed[col] = df_processed[col].fillna(0) # Wypełnij 0 lub inną wartość domyślną
+                if pd.isna(mean_val):
+                    df_processed[col] = df_processed[col].fillna(0)
                     save_log("class_bike_trainer", "warning", f"Kolumna '{col}' zawierała tylko NaN, wypełniono 0.")
                 else:
                     df_processed[col] = df_processed[col].fillna(mean_val)
@@ -125,7 +125,7 @@ def prepare_features_and_targets(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Ser
                 if not mode_val.empty:
                     df_processed[col] = df_processed[col].fillna(mode_val[0])
                 else:
-                    df_processed[col] = df_processed[col].fillna('unknown') # Wypełnij 'unknown' jeśli moda jest pusta
+                    df_processed[col] = df_processed[col].fillna('unknown') 
                     save_log("class_bike_trainer", "warning", f"Kolumna '{col}' stringowa zawierała tylko NaN, wypełniono 'unknown'.")
 
     # Dodatkowe usunięcie NaN, jeśli po wypełnieniu nadal istnieją (np. kolumny tylko z NaN)
@@ -142,9 +142,8 @@ def prepare_features_and_targets(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Ser
     daylight_le = None
     if 'daylight' in df_processed.columns:
         daylight_le = LabelEncoder()
-        # Ensure 'yes' and 'no' are handled correctly, map others to a default or treat as new
         known_daylight_labels = ['yes', 'no']
-        df_processed['daylight'] = df_processed['daylight'].apply(lambda x: x if x in known_daylight_labels else 'no') # Default to 'no'
+        df_processed['daylight'] = df_processed['daylight'].apply(lambda x: x if x in known_daylight_labels else 'no')
         df_processed['daylight_encoded'] = daylight_le.fit_transform(df_processed['daylight'])
         df_processed = df_processed.drop('daylight', axis=1)
     
@@ -182,21 +181,18 @@ def prepare_features_and_targets(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Ser
     df_processed['bike_level'] = df_processed.apply(categorize_bike_level, axis=1)
     
     # Aktualizacja listy kolumn cech dla finalnego DataFrame X
-    # Zaczynamy od bazowych cech, które faktycznie istnieją w df_processed
     final_feature_columns = [f for f in FEATURE_COLUMNS_BASE if f in df_processed.columns]
     
-    # Usuwamy oryginalne kolumny kategoryczne, jeśli zostały zakodowane
-    # i dodajemy ich zakodowane odpowiedniki.
+    # Usuwamy oryginalne kolumny kategoryczne, jeśli zostały zakodowane i dodajemy ich zakodowane odpowiedniki.
     if 'daylight' in df_processed.columns and 'daylight_encoded' in df_processed.columns:
-        if 'daylight' in final_feature_columns: # Dodatkowy warunek
+        if 'daylight' in final_feature_columns:
             final_feature_columns.remove('daylight')
         final_feature_columns.append('daylight_encoded')
 
     if 'weather_condition' in df_processed.columns and 'weather_condition_encoded' in df_processed.columns:
-        if 'weather_condition' in final_feature_columns: # Dodatkowy warunek
+        if 'weather_condition' in final_feature_columns:
             final_feature_columns.remove('weather_condition')
         final_feature_columns.append('weather_condition_encoded')
-
 
     # Przygotowanie cech (X) - upewnij się, że używasz zaktualizowanej listy
     X = df_processed[[col for col in final_feature_columns if col in df_processed.columns]].copy()
@@ -209,11 +205,8 @@ def prepare_features_and_targets(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Ser
     save_log("class_bike_trainer", "info", f"Pomyślnie przygotowano cechy i cele do treningu. Liczba próbek: {len(X)}.")
     return X, y_binary, y_multiclass, y_regression, daylight_le, weather_le
 
+# Trenuje i zapisuje model klasyfikacji/regresji. Zwraca metrykę jakości (Accuracy dla klasyfikacji, RMSE dla regresji).
 def train_and_save_model(X: pd.DataFrame, y: pd.Series, model_type: str, model_path: str, label_encoders: dict = None) -> float:
-    """
-    Trenuje i zapisuje model klasyfikacji/regresji.
-    Zwraca metrykę jakości (Accuracy dla klasyfikacji, RMSE dla regresji).
-    """
     
     # Sprawdzenie minimalnej liczby próbek dla podziału danych
     if len(X) < 2 or len(y) < 2: # Minimalnie 2 próbki do train_test_split
@@ -224,7 +217,6 @@ def train_and_save_model(X: pd.DataFrame, y: pd.Series, model_type: str, model_p
     if model_type in ['binary_classification', 'multiclass_classification'] and len(y.unique()) < 2:
         save_log("class_bike_trainer", "warning", f"Zbyt mało unikalnych klas ({len(y.unique())}) dla klasyfikacji {model_type}. Wymagane min. 2. Pomijam trening.")
         return 0.0
-
 
     save_log("class_bike_trainer", "info", f"Rozpoczynam trening modelu {model_type}...")
 
@@ -328,14 +320,8 @@ def train_and_save_model(X: pd.DataFrame, y: pd.Series, model_type: str, model_p
     
     return best_score
 
+# Aktualizuje status modelu w bazie danych.
 def update_model_status(session: Session, model_name: str, quality_metric: float, metric_type: str):
-    """
-    Aktualizuje status modelu w bazie danych.
-    :param session: Sesja SQLAlchemy do bazy danych.
-    :param model_name: Nazwa modelu (np. 'bikes_binary_classifier', 'bikes_kmeans').
-    :param quality_metric: Wartość metryki jakości modelu (np. accuracy, RMSE, silhouette_score).
-    :param metric_type: Typ metryki ('accuracy', 'rmse', 'silhouette_score').
-    """
     try:
         model_status_entry = session.execute(
             select(ModelStatus).filter_by(model_name=model_name)
@@ -373,12 +359,13 @@ def update_model_status(session: Session, model_name: str, quality_metric: float
         save_log(f"trainer_{model_name.replace('_', '-')}", "error", 
                      f"Błąd podczas aktualizacji statusu modelu '{model_name}' w bazie danych: {e}")
 
-# +--------------------------------------------------+
-# |                GŁÓWNA FUNKCJA TRENINGOWA        |
-# +--------------------------------------------------+
+# +-------------------------------------+
+# |     GŁÓWNA FUNKCJA TRENINGU ML      |
+# |       Proces odpytywanie LLM        |
+# +-------------------------------------+
 
+# Główna funkcja do uruchamiania cyklu treningowego dla klasyfikatorów rowerowych.
 def run_bike_classification_training_cycle():
-    """Główna funkcja do uruchamiania cyklu treningowego dla klasyfikatorów rowerowych."""
     save_log("class_bike_trainer", "info", "🚀 Rozpoczynam cykl treningowy dla klasyfikatorów rowerowych...")
     
     db_session = SessionLocal()
@@ -431,13 +418,10 @@ def run_bike_classification_training_cycle():
     finally:
         db_session.close()
 
-
-
-
-
-
-
-
+# +-------------------------------------+
+# |     GŁÓWNA FUNKCJA WYKONUJĄCA       |
+# |       Proces odpytywanie LLM        |
+# +-------------------------------------+
 
 if __name__ == "__main__":
     while True:

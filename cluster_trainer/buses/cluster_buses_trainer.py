@@ -8,14 +8,16 @@ import joblib
 import time
 import os
 
-time.sleep(60)
+# --- Opóźnienie startu ---
+print("Kontener startuje")
+time.sleep(180)
 
+# --- Importy połączenia się i funkcji łączących się z PostGreSQL i innych ---
 from shared.db_dto import BusesData, ModelStatus, CEST
 from shared.db_conn import SessionLocal
 from shared.db_utils import save_log
 from sqlalchemy.orm import Session
 from sqlalchemy import select
-
 
 # --- Ustawienia ---
 MODEL_SAVE_PATH_BUSES = '/app/shared/clusterization/models/buses_kmeans_new.pkl'
@@ -25,25 +27,21 @@ TRAINING_DATA_INTERVAL_DAYS = 30
 # Upewnij się, że katalog na modele istnieje
 os.makedirs(os.path.dirname(MODEL_SAVE_PATH_BUSES), exist_ok=True)
 
-# +--------------------------------------------------+
-# |          FUNKCJE POMOCNICZE DO TRENINGU          |
-# +--------------------------------------------------+
+# +-------------------------------------------------+
+# |         FUNKCJE POMOCNICZE DO TRENINGU          |
+# |         Trenowanie Modeli Klasteryzacji         |
+# +-------------------------------------------------+
 
+# Pobiera dane autobusowe z bazy danych dla określonego interwału czasowego, wybierając tylko kolumny potrzebne do klasteryzacji.
 def fetch_bus_data_for_training(session: Session, interval_days: int) -> pd.DataFrame:
-    """
-    Pobiera dane autobusowe z bazy danych dla określonego interwału czasowego,
-    wybierając tylko kolumny potrzebne do klasteryzacji.
-    """
     start_time = datetime.now(CEST) - timedelta(days=interval_days)
 
-    # Wybieramy konkretne kolumny z BusesData DTO
-    # Zgodnie z Twoim DTO BusesData, zawiera ono wszystkie potrzebne cechy
     columns_to_fetch = [
         BusesData.average_delay_seconds, BusesData.maximum_delay_seconds, BusesData.minimum_delay_seconds,
         BusesData.delay_standard_deviation, BusesData.delay_range_seconds, BusesData.on_time_stop_ratio, 
         BusesData.delay_consistency_score, BusesData.stops_count,
         BusesData.temperature, BusesData.wind_kph, BusesData.precip_mm, BusesData.humidity,
-        BusesData.weather_condition, # Ta kolumna zostanie zakodowana
+        BusesData.weather_condition,
         BusesData.fine_particles_pm2_5, BusesData.coarse_particles_pm10
     ]
 
@@ -54,24 +52,21 @@ def fetch_bus_data_for_training(session: Session, interval_days: int) -> pd.Data
     ).fetchall()
     
     # Tworzymy DataFrame z pobranych danych
-    # Nazwy kolumn bierzemy z nazw atrybutów DTO
     df = pd.DataFrame(query_result, columns=[col.name for col in columns_to_fetch])
 
     save_log("cluster_buses_trainer", "info", f"Pobrano {len(df)} rekordów danych autobusowych do treningu z ostatnich {interval_days} dni.")
     return df
 
+# Przygotowuje cechy do klasteryzacji dla danych autobusowych z DataFrame. Zwraca przetworzony DataFrame i LabelEncoder.
 def prepare_bus_features_for_training(df: pd.DataFrame) -> tuple[pd.DataFrame, LabelEncoder]:
-    """
-    Przygotowuje cechy do klasteryzacji dla danych autobusowych z DataFrame.
-    Zwraca przetworzony DataFrame i LabelEncoder.
-    """
+
     # Kolumny cech, które będą użyte do treningu
     features = [
         'average_delay_seconds', 'maximum_delay_seconds', 'minimum_delay_seconds',
         'delay_standard_deviation', 'delay_range_seconds', 'on_time_stop_ratio', 
         'delay_consistency_score', 'stops_count',
         'temperature', 'wind_kph', 'precip_mm', 'humidity',
-        'weather_condition', # Ta kolumna zostanie zakodowana
+        'weather_condition',
         'fine_particles_pm2_5', 'coarse_particles_pm10'
     ]
     
@@ -101,11 +96,9 @@ def prepare_bus_features_for_training(df: pd.DataFrame) -> tuple[pd.DataFrame, L
     save_log("cluster_buses_trainer", "info", f"Pomyślnie przygotowano cechy do treningu. Liczba próbek: {len(df_processed)}.")
     return df_processed, le
 
+# Znajduje optymalną liczbę klastrów używając silhouette score.
 def find_optimal_clusters_and_score(X: pd.DataFrame, max_clusters: int = 8) -> tuple[int, float]:
-    """
-    Znajduje optymalną liczbę klastrów używając silhouette score.
-    Nie generuje wykresów.
-    """
+
     silhouette_scores = []
     K_range = range(2, max_clusters + 1)
     
@@ -138,8 +131,8 @@ def find_optimal_clusters_and_score(X: pd.DataFrame, max_clusters: int = 8) -> t
     save_log("cluster_buses_trainer", "info", f"Znaleziono optymalne k={best_k} z Silhouette Score: {best_silhouette_score:.3f}.")
     return best_k, best_silhouette_score
 
+# Trenuje model KMeans dla autobusów i zapisuje go do pliku.
 def train_and_save_bus_kmeans_model(X: pd.DataFrame, n_clusters: int, scaler: StandardScaler, label_encoder: LabelEncoder, model_path: str) -> float:
-    """Trenuje model KMeans dla autobusów i zapisuje go do pliku."""
     
     kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
     cluster_labels = kmeans.fit_predict(X)
@@ -151,7 +144,7 @@ def train_and_save_bus_kmeans_model(X: pd.DataFrame, n_clusters: int, scaler: St
         'kmeans': kmeans,
         'scaler': scaler,
         'label_encoder': label_encoder,
-        'feature_names': X.columns.tolist(), # Zapisujemy nazwy kolumn użytych do treningu
+        'feature_names': X.columns.tolist(),
         'n_clusters': n_clusters,
         'silhouette_score': final_silhouette_score
     }
@@ -160,8 +153,8 @@ def train_and_save_bus_kmeans_model(X: pd.DataFrame, n_clusters: int, scaler: St
     save_log("cluster_buses_trainer", "info", f"Model autobusowy zapisany do: {model_path} z Silhouette Score: {final_silhouette_score:.3f}.")
     return final_silhouette_score
 
+# Aktualizuje status modelu w bazie danych.
 def update_model_status_in_db(session: Session, model_name: str, quality_metric: float, version: int):
-    """Aktualizuje status modelu w bazie danych."""
     try:
         # Konwersja quality_metric na standardowy Python float
         quality_metric_standard_float = float(quality_metric) 
@@ -181,7 +174,7 @@ def update_model_status_in_db(session: Session, model_name: str, quality_metric:
                 model_name=model_name,
                 is_new_model_available=True,
                 last_updated=datetime.now(CEST),
-                quality_metric=quality_metric_standard_float, # <--- Użyj skonwertowanej wartości
+                quality_metric=quality_metric_standard_float,
                 version=1
             )
             session.add(new_entry)
@@ -193,12 +186,13 @@ def update_model_status_in_db(session: Session, model_name: str, quality_metric:
         save_log("cluster_buses_trainer", "error", f"Błąd podczas aktualizacji statusu modelu '{model_name}' w bazie danych: {e}")
 
 
-# +--------------------------------------------------+
-# |          GŁÓWNA FUNKCJA TRENINGOWA               |
-# +--------------------------------------------------+
+# +-------------------------------------------------+
+# |           GŁÓWNA FUNKCJA DLA PROCESU            |
+# |         Trenowanie Modeli Klasteryzacji         |
+# +-------------------------------------------------+
 
+# Główna funkcja do uruchamiania cyklu treningowego dla klastrów autobusowych.
 def run_bus_cluster_training_cycle():
-    """Główna funkcja do uruchamiania cyklu treningowego dla klastrów autobusowych."""
     save_log("cluster_buses_trainer", "info", "🚀 Rozpoczynam cykl treningowy dla klastrów autobusowych...")
     
     db_session = SessionLocal()
@@ -219,7 +213,7 @@ def run_bus_cluster_training_cycle():
         save_log("cluster_buses_trainer", "info", "Normalizacja danych autobusowych...")
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(df_features)
-        X_scaled_df = pd.DataFrame(X_scaled, columns=df_features.columns) # Zachowaj nazwy kolumn po skalowaniu
+        X_scaled_df = pd.DataFrame(X_scaled, columns=df_features.columns)
 
         # 4. Znajdź optymalną liczbę klastrów
         save_log("cluster_buses_trainer", "info", "Szukanie optymalnej liczby klastrów dla autobusów...")
@@ -246,11 +240,12 @@ def run_bus_cluster_training_cycle():
     finally:
         db_session.close()
 
-
-
+# +-------------------------------------+
+# |     GŁÓWNA FUNKCJA WYKONUJĄCA       |
+# |       Proces odpytywanie LLM        |
+# +-------------------------------------+
 
 if __name__ == "__main__":
-    import time
     while True:
         run_bus_cluster_training_cycle()
         save_log("cluster_buses_trainer", "info", f"Kolejny cykl treningowy za {24} godzin.")

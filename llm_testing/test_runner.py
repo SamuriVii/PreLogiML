@@ -188,6 +188,11 @@ def run_cyclic_tests_llm():
             save_log("llm_tester", "info", f"Cykl testowy zakończony. Następny za {TEST_CYCLE_INTERVAL_HOURS} godzin.")
             time.sleep(TEST_CYCLE_INTERVAL_HOURS * 3600)
 
+# +-------------------------------------+
+# |     GŁÓWNA FUNKCJA WKYONUJĄCA       |
+# |       Proces odpytywanie LLM        |
+# +-------------------------------------+
+
 if __name__ == "__main__":
     # Uruchom runner testów
     run_cyclic_tests_llm()

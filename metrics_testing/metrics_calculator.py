@@ -8,6 +8,10 @@ from sqlalchemy import select
 import nltk
 import time
 
+# --- Opóźnienie startu ---
+print("Kontener startuje")
+time.sleep(60)
+
 # --- Upewnij się, że masz pobrane dane NLTK potrzebne do tokenizacji ---
 try:
     nltk.data.find('tokenizers/punkt')
