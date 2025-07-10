@@ -12,4 +12,4 @@ ENV NLTK_DATA=/usr/local/nltk_data
 RUN mkdir -p ${NLTK_DATA}
 RUN python -c "import nltk; nltk.download('all', download_dir='${NLTK_DATA}', quiet=True)"
 
-CMD ["python", "metrics_calculator.py"]
+# CMD ["python", "metrics_calculator.py"]

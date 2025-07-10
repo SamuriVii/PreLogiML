@@ -160,3 +160,15 @@ CREATE TABLE IF NOT EXISTS model_status (
     quality_metric FLOAT,
     version INTEGER NOT NULL DEFAULT 1
 );
+
+-- inserting data into "model_status" table
+INSERT INTO model_status (model_name, is_new_model_available, quality_metric, version) VALUES
+('bikes_kmeans', FALSE, 0.0, 1),
+('bikes_binary_classifier', FALSE, 0.0, 1),
+('bikes_multiclass_classifier', FALSE, 0.0, 1),
+('bikes_regression_predictor', FALSE, 0.0, 1),
+('buses_kmeans', FALSE, 0.0, 1),
+('bus_binary_classifier', FALSE, 0.0, 1),
+('bus_multiclass_classifier', FALSE, 0.0, 1),
+('bus_regression_predictor', FALSE, 0.0, 1)
+ON CONFLICT (model_name) DO NOTHING;

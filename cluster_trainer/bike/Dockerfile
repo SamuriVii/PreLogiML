@@ -6,4 +6,4 @@ COPY . /app
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-CMD ["python", "cluster_bikes_trainer.py"]
+# CMD ["python", "cluster_bikes_trainer.py"]

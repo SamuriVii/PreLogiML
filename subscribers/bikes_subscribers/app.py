@@ -4,8 +4,8 @@ import json
 import time
 
 # --- Opóźnienie startu ---
-print("Kontener startuje")
-time.sleep(180)
+# print("Kontener startuje")
+# time.sleep(180)
 
 # --- Importy połączenia się i funkcji łączących się z PostGreSQL i innych ---
 from shared.db_utils import save_log, save_bike_data_to_base, get_model_status, update_model_new_available_flag

@@ -171,7 +171,7 @@ class BasePredictor:
     # Wewnętrzna metoda do przygotowywania cech z dict'a.
     def _prepare_features(self, data_dict: Dict, feature_mapping: Dict) -> Optional[pd.DataFrame]:
         if not self.is_loaded:
-            print(f"⚠️ Model '{self.model_name}' nie jest załadowany. Nie można przygotować cech.")
+            print(f"⚠️ Model '{self.raw_model_name}' nie jest załadowany. Nie można przygotować cech.")
             return None
 
         feature_data = {}
@@ -238,6 +238,8 @@ class BasePredictor:
                 else:
                     processed_df[col] = 0
             
+            processed_df = df.reindex(columns=self.feature_names, fill_value=0)
+
             if processed_df.isnull().any().any():
                 print(f"⚠️ Dane po przygotowaniu dla modelu '{self.raw_model_name}' zawierają wartości NaN.")
                 return None
@@ -325,14 +327,14 @@ class BusModelPredictor(BasePredictor):
     # Zwraca przewidywaną wartość/klasę lub (klasę numeryczną, prawdopodobieństwa, klasę tekstową) dla klasyfikacji.
     def predict(self, data_dict: Dict) -> Optional[Union[float, Tuple[int, List[float], str]]]:
         if not self.is_loaded:
-            print(f"⚠️ Model '{self.model_name}' nie jest załadowany. Nie można wykonać predykcji.")
+            print(f"⚠️ Model '{self.raw_model_name}' nie jest załadowany. Nie można wykonać predykcji.")
             return None
         
         # Przygotuj cechy
         features_df = self._prepare_features(data_dict, self.feature_mapping)
         
         if features_df is None:
-            print(f"⚠️ Nie można przygotować cech dla modelu '{self.model_name}'.")
+            print(f"⚠️ Nie można przygotować cech dla modelu '{self.raw_model_name}'.")
             return None
         
         try:
@@ -358,7 +360,7 @@ class BusModelPredictor(BasePredictor):
                 return None
                 
         except Exception as e:
-            print(f"❌ Błąd predykcji dla modelu '{self.model_name}': {e}")
+            print(f"❌ Błąd predykcji dla modelu '{self.raw_model_name}': {e}")
             return None
 
 # +--------------------------------------------------+
@@ -420,14 +422,14 @@ class BikeModelPredictor(BasePredictor):
     def predict(self, data_dict: Dict) -> Optional[Union[float, Tuple[int, List[float], str]]]:
 
         if not self.is_loaded:
-            print(f"⚠️ Model '{self.model_name}' nie jest załadowany. Nie można wykonać predykcji.")
+            print(f"⚠️ Model '{self.raw_model_name}' nie jest załadowany. Nie można wykonać predykcji.")
             return None
         
         # Przygotuj cechy
         features_df = self._prepare_features(data_dict, self.feature_mapping)
         
         if features_df is None:
-            print(f"⚠️ Nie można przygotować cech dla modelu '{self.model_name}'.")
+            print(f"⚠️ Nie można przygotować cech dla modelu '{self.raw_model_name}'.")
             return None
         
         try:
@@ -453,7 +455,7 @@ class BikeModelPredictor(BasePredictor):
                 return None
                 
         except Exception as e:
-            print(f"❌ Błąd predykcji dla modelu '{self.model_name}': {e}")
+            print(f"❌ Błąd predykcji dla modelu '{self.raw_model_name}': {e}")
             return None
 
 # +--------------------------------------------------+

@@ -1,15 +1,9 @@
 from tenacity import retry, stop_after_attempt, wait_exponential, RetryError
-from apscheduler.schedulers.background import BackgroundScheduler
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from kafka import KafkaProducer
 from typing import List, Dict
 import requests
 import json
-import time
-
-# --- Opóźnienie startu ---
-print("Kontener startuje")
-time.sleep(180)
 
 # --- Importy połączenia się i funkcji łączących się z PostGreSQL ---
 from shared.db_utils import save_log
@@ -102,33 +96,18 @@ def job():
                 except Exception:
                     # Błąd już zalogowany w send_to_kafka
                     pass
-            
-            # Loguj po całym batchu
             save_log("producer_bikes", "info", f"Wysłano {success_count}/{len(stations_payload)} stacji do Kafki.")
         else:
             save_log("producer_bikes", "warning", "Pobrano pustą odpowiedź z API Mevo.")
     except RetryError:
         msg = "Nie udało się pobrać danych po 5 próbach."
         save_log("producer_bikes", "error", msg)
+    finally:
+        if producer:
+            producer.close()
+        print("✅ Bikes Producer - cykl zakończony.")
 
 # --- Główna część ---
 if __name__ == "__main__":
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(job, 'interval', minutes=1)
-    scheduler.start()
-
-    save_log("producer_bikes", "info", "Producer uruchomiony.")
-
-    try:
-        while True:
-            time.sleep(60)
-    except (KeyboardInterrupt, SystemExit):
-        scheduler.shutdown()
-        producer.close()
-        print("⛔ Bikes Producer zatrzymany.")
-        save_log("producer_bikes", "info", "Producer zatrzymany.")
-    except Exception as e:
-        save_log("producer_bikes", "error", f"Błąd krytyczny: {str(e)}")
-    finally:
-        scheduler.shutdown()
-        producer.close()
+    save_log("producer_bikes", "info", "Producer - cykl startuje z Node-RED.")
+    job()

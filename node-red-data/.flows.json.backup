@@ -1,0 +1,439 @@
+[
+    {
+        "id": "ff1b8d58a1c1e175",
+        "type": "tab",
+        "label": "Flow 1",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "d8e794dd9d31abcb",
+        "type": "inject",
+        "z": "ff1b8d58a1c1e175",
+        "name": "Bus/Bike Producers",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "300",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "90",
+        "topic": "",
+        "payload": "Bus/Bike Producers",
+        "payloadType": "str",
+        "x": 160,
+        "y": 160,
+        "wires": [
+            [
+                "70e1ee54915f4a6a",
+                "2ca6a3971bbd6f53"
+            ]
+        ]
+    },
+    {
+        "id": "70e1ee54915f4a6a",
+        "type": "exec",
+        "z": "ff1b8d58a1c1e175",
+        "command": "docker exec producer-bikes python /app/app.py",
+        "addpay": "",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "",
+        "winHide": false,
+        "oldrc": false,
+        "name": "",
+        "x": 480,
+        "y": 120,
+        "wires": [
+            [],
+            [
+                "d3e5bfaf911d40ba"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "d3e5bfaf911d40ba",
+        "type": "debug",
+        "z": "ff1b8d58a1c1e175",
+        "name": "debug 1",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 760,
+        "y": 160,
+        "wires": []
+    },
+    {
+        "id": "2ca6a3971bbd6f53",
+        "type": "exec",
+        "z": "ff1b8d58a1c1e175",
+        "command": "docker exec producer-buses python /app/app.py",
+        "addpay": "",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "",
+        "winHide": false,
+        "oldrc": false,
+        "name": "",
+        "x": 480,
+        "y": 200,
+        "wires": [
+            [],
+            [
+                "d3e5bfaf911d40ba"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "f3f7e7e290461edb",
+        "type": "exec",
+        "z": "ff1b8d58a1c1e175",
+        "command": "docker exec producer-environment python /app/app.py",
+        "addpay": "",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "",
+        "winHide": false,
+        "oldrc": false,
+        "name": "",
+        "x": 480,
+        "y": 300,
+        "wires": [
+            [],
+            [
+                "a2c5769d6ac0efab"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "c4af641dfbf4a289",
+        "type": "inject",
+        "z": "ff1b8d58a1c1e175",
+        "name": "Env Producer",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "300",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "30",
+        "topic": "",
+        "payload": "Env Producer",
+        "payloadType": "str",
+        "x": 160,
+        "y": 300,
+        "wires": [
+            [
+                "f3f7e7e290461edb"
+            ]
+        ]
+    },
+    {
+        "id": "a2c5769d6ac0efab",
+        "type": "debug",
+        "z": "ff1b8d58a1c1e175",
+        "name": "debug 2",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 780,
+        "y": 300,
+        "wires": []
+    },
+    {
+        "id": "5b059029ecb0798c",
+        "type": "inject",
+        "z": "ff1b8d58a1c1e175",
+        "name": "LLM_Tester",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "7200",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "7200",
+        "topic": "",
+        "payload": "LLM_Tester",
+        "payloadType": "str",
+        "x": 170,
+        "y": 380,
+        "wires": [
+            [
+                "f92c0b0d07da069c"
+            ]
+        ]
+    },
+    {
+        "id": "1f736f17a7dabb73",
+        "type": "inject",
+        "z": "ff1b8d58a1c1e175",
+        "name": "Metrics_Tester",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "7200",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "8000",
+        "topic": "",
+        "payload": "Metrics_Tester",
+        "payloadType": "str",
+        "x": 160,
+        "y": 440,
+        "wires": [
+            [
+                "d84d807d86f907b4"
+            ]
+        ]
+    },
+    {
+        "id": "235b8da75ff53d74",
+        "type": "debug",
+        "z": "ff1b8d58a1c1e175",
+        "name": "debug 3",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 760,
+        "y": 380,
+        "wires": []
+    },
+    {
+        "id": "4e1b9af6c6094ace",
+        "type": "debug",
+        "z": "ff1b8d58a1c1e175",
+        "name": "debug 4",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 860,
+        "y": 440,
+        "wires": []
+    },
+    {
+        "id": "f92c0b0d07da069c",
+        "type": "exec",
+        "z": "ff1b8d58a1c1e175",
+        "command": "docker exec llm-tester python /app/test_runner.py",
+        "addpay": "",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "",
+        "winHide": false,
+        "oldrc": false,
+        "name": "",
+        "x": 470,
+        "y": 380,
+        "wires": [
+            [],
+            [
+                "235b8da75ff53d74"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "d84d807d86f907b4",
+        "type": "exec",
+        "z": "ff1b8d58a1c1e175",
+        "command": "docker exec metrics-calculator python /app/metrics_calculator.py",
+        "addpay": "",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "",
+        "winHide": false,
+        "oldrc": false,
+        "name": "",
+        "x": 510,
+        "y": 440,
+        "wires": [
+            [],
+            [
+                "4e1b9af6c6094ace"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "0bf79e63663ba10e",
+        "type": "exec",
+        "z": "ff1b8d58a1c1e175",
+        "command": "docker exec ml_cluster_bike_trainer python /app/cluster_bikes_trainer.py",
+        "addpay": "",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "",
+        "winHide": false,
+        "oldrc": false,
+        "name": "",
+        "x": 520,
+        "y": 540,
+        "wires": [
+            [],
+            [
+                "4434b4f67eccc624"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "9def2939375386ee",
+        "type": "exec",
+        "z": "ff1b8d58a1c1e175",
+        "command": "docker exec ml_cluster_bus_trainer python /app/cluster_buses_trainer.py",
+        "addpay": "",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "",
+        "winHide": false,
+        "oldrc": false,
+        "name": "",
+        "x": 520,
+        "y": 600,
+        "wires": [
+            [],
+            [
+                "4434b4f67eccc624"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "12ba54d360fbf506",
+        "type": "exec",
+        "z": "ff1b8d58a1c1e175",
+        "command": "docker exec ml_class_bike_trainer python /app/class_bikes_trainer.py",
+        "addpay": "",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "",
+        "winHide": false,
+        "oldrc": false,
+        "name": "",
+        "x": 510,
+        "y": 680,
+        "wires": [
+            [],
+            [
+                "4434b4f67eccc624"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "af86c49ca595d73f",
+        "type": "exec",
+        "z": "ff1b8d58a1c1e175",
+        "command": "docker exec ml_class_bus_trainer python /app/class_buses_trainer.py",
+        "addpay": "",
+        "append": "",
+        "useSpawn": "false",
+        "timer": "",
+        "winHide": false,
+        "oldrc": false,
+        "name": "",
+        "x": 510,
+        "y": 740,
+        "wires": [
+            [],
+            [
+                "4434b4f67eccc624"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "4625ef24465528c1",
+        "type": "inject",
+        "z": "ff1b8d58a1c1e175",
+        "name": "ML Trainer",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "43200",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "43200",
+        "topic": "",
+        "payload": "ML Trainer",
+        "payloadType": "str",
+        "x": 130,
+        "y": 640,
+        "wires": [
+            [
+                "0bf79e63663ba10e",
+                "9def2939375386ee",
+                "12ba54d360fbf506",
+                "af86c49ca595d73f"
+            ]
+        ]
+    },
+    {
+        "id": "4434b4f67eccc624",
+        "type": "debug",
+        "z": "ff1b8d58a1c1e175",
+        "name": "debug 5",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "false",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 900,
+        "y": 640,
+        "wires": []
+    }
+]

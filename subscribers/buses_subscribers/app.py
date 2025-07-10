@@ -20,9 +20,9 @@ KAFKA_TOPIC = "buses"
 KAFKA_GROUP = "buses-subscriber"  
 ANYTHINGLLM_WORKSPACE_SLUG = "project"
 CLUSTER_MODEL_NAME = "buses_kmeans"
-CLASS_MODEL_A = "buses_binary_classifier"
-CLASS_MODEL_B = "buses_multiclass_classifier"
-CLASS_MODEL_C = "buses_regression_predictor"
+CLASS_MODEL_A = "bus_binary_classifier"
+CLASS_MODEL_B = "bus_multiclass_classifier"
+CLASS_MODEL_C = "bus_regression_predictor"
 
 # --- Ustawienie Kafka Subscriber ---
 consumer = KafkaConsumer(

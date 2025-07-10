@@ -1,14 +1,8 @@
 from tenacity import retry, stop_after_attempt, wait_exponential, RetryError
-from apscheduler.schedulers.background import BackgroundScheduler
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from kafka import KafkaProducer
 import requests
-import time
 import json
-
-# --- Opóźnienie startu ---
-print("Kontener startuje")
-time.sleep(60)
 
 # --- Importy połączenia się i funkcji łączących się z PostGreSQL ---
 from shared.db_utils import save_log
@@ -96,26 +90,12 @@ def job():
     except RetryError:
         msg = "Nie udało się pobrać danych po 5 próbach."
         save_log("producer_environment", "error", msg)
+    finally:
+        if producer:
+            producer.close()
+        print("✅ Environment Producer - cykl zakończony.")
 
 # --- Główna część ---
 if __name__ == "__main__":
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(job, 'interval', minutes=2)
-    scheduler.start()
-
-    print("✅ Enviroment Producer działa...")
-    save_log("producer_environment", "info", "Producer uruchomiony.")
-
-    try:
-        while True:
-            time.sleep(60)
-    except (KeyboardInterrupt, SystemExit):
-        scheduler.shutdown()
-        producer.close()
-        print("⛔ Enviroment Producer zatrzymany.")
-        save_log("producer_environment", "info", "Producer zatrzymany.")
-    except Exception as e:
-        save_log("producer_environment", "error", f"Błąd krytyczny: {str(e)}")
-    finally:
-        scheduler.shutdown()
-        producer.close()
+    save_log("producer_environment", "info", "Producer - cykl startuje z Node-RED.")
+    job()

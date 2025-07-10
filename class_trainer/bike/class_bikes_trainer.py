@@ -6,12 +6,7 @@ from sklearn.preprocessing import StandardScaler, LabelEncoder
 import pandas as pd
 import numpy as np
 import joblib
-import time
 import os
-
-# --- Opóźnienie startu ---
-print("Kontener startuje")
-time.sleep(180)
 
 # --- Importy połączenia się i funkcji łączących się z PostGreSQL i innych ---
 from shared.db_dto import BikesData, ModelStatus, CEST
@@ -424,7 +419,5 @@ def run_bike_classification_training_cycle():
 # +-------------------------------------+
 
 if __name__ == "__main__":
-    while True:
-        run_bike_classification_training_cycle()
-        save_log("class_bike_trainer", "info", f"Kolejny cykl treningowy za {TRAINING_CYCLE_INTERVAL_HOURS} godzin.")
-        time.sleep(TRAINING_CYCLE_INTERVAL_HOURS * 3600)
+    run_bike_classification_training_cycle()
+    save_log("class_bike_trainer", "info", f"Kolejny cykl treningowy za {TRAINING_CYCLE_INTERVAL_HOURS} godzin.")

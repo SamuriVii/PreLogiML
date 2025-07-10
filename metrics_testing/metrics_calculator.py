@@ -3,14 +3,8 @@ from shared.db_conn import SessionLocal
 from shared.db_dto import LLMTestResult
 from shared.db_utils import save_log
 from rouge_score import rouge_scorer
-from sqlalchemy.orm import Session
 from sqlalchemy import select
 import nltk
-import time
-
-# --- Opóźnienie startu ---
-print("Kontener startuje")
-time.sleep(60)
 
 # --- Upewnij się, że masz pobrane dane NLTK potrzebne do tokenizacji ---
 try:
@@ -110,7 +104,4 @@ def run_metrics_calculation_cycle():
         session.close()
 
 if __name__ == "__main__":
-
-    while True:
-        run_metrics_calculation_cycle()
-        time.sleep(3600)
+    run_metrics_calculation_cycle()

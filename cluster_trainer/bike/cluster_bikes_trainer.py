@@ -5,12 +5,7 @@ from sklearn.cluster import KMeans
 import pandas as pd
 import numpy as np
 import joblib
-import time
 import os
-
-# --- Opóźnienie startu ---
-print("Kontener startuje")
-time.sleep(180)
 
 # --- Importy połączenia się i funkcji łączących się z PostGreSQL i innych ---
 from shared.db_dto import BikesData, ModelStatus, CEST
@@ -242,7 +237,5 @@ def run_bike_cluster_training_cycle():
 # +-------------------------------------+
 
 if __name__ == "__main__":
-    while True:
-        run_bike_cluster_training_cycle()
-        save_log("cluster_trainer", "info", f"Kolejny cykl treningowy za {6} godzin.")
-        time.sleep(6 * 3600)
+    run_bike_cluster_training_cycle()
+    save_log("cluster_trainer", "info", f"Kolejny cykl treningowy za {12} godzin.")
