@@ -389,15 +389,15 @@ def run_bus_classification_training_cycle():
         
         # Model binarny
         binary_score = train_and_save_model(X, y_binary, 'binary_classification', MODEL_SAVE_PATH_BINARY, label_encoders_dict)
-        update_model_status(db_session, 'buses_binary_classifier', binary_score, 'accuracy')
+        update_model_status(db_session, 'bus_binary_classifier', binary_score, 'accuracy')
 
         # Model wieloklasowy
         multiclass_score = train_and_save_model(X, y_multiclass, 'multiclass_classification', MODEL_SAVE_PATH_MULTICLASS, label_encoders_dict)
-        update_model_status(db_session, 'buses_multiclass_classifier', multiclass_score, 'accuracy')
+        update_model_status(db_session, 'bus_multiclass_classifier', multiclass_score, 'accuracy')
         
         # Model regresji
         regression_score = train_and_save_model(X, y_regression, 'regression', MODEL_SAVE_PATH_REGRESSION, label_encoders_dict)
-        update_model_status(db_session, 'buses_regression_predictor', regression_score, 'rmse')
+        update_model_status(db_session, 'bus_regression_predictor', regression_score, 'rmse')
         
         save_log("class_bus_trainer", "info", "✅ Cykl treningowy dla klasyfikatorów autobusowych zakończony pomyślnie.")
 
