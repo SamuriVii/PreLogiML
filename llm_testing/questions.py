@@ -633,31 +633,31 @@ def get_gt_optimization_strategies_summary(session: Session, time_interval_days:
 
 QUESTIONS_TEMPLATES = {
     "q1_bike_station_cluster_status": {
-        "template": "Dla stacji rowerowej o nazwie '{station_name}', jaka jest jej predykcja klasteryzacji (cluster_id) dla ostatniego zapisu danych, i czy model uznał tę predykcję za udaną (cluster_prediction_success)? Czy w tym samym czasie występowały silne opady deszczu (precip_mm > 0)?",
+        "template": "Dla stacji rowerowej o nazwie '{station_name}', jaka jest jej predykcja klasteryzacji (cluster_id) dla ostatniego zapisu danych, i czy model uznał tę predykcję za udaną (cluster_prediction_success)? Czy w tym samym czasie występowały silne opady deszczu (precip_mm > 0)? Jeśli nie masz danych dla stacji '{station_name}', odpowiedz: 'Brak danych dla tej stacji'.",
         "placeholders": ["station_name"],
         "ground_truth_func": get_gt_bike_station_cluster_status,
         "time_interval_param": "time_interval_hours"
     },
     "q2_bus_cluster_delay_category": {
-        "template": "Ile autobusów należało do klastra o id '{cluster_id}' w ciągu ostatnich {time_interval_hours} godzin i jaka była ich dominująca kategoria opóźnienia (delay_category_label)?",
+        "template": "Pamiętaj, aby uwzględnić wszystkie dostępne dane. Ile autobusów należało do klastra o id '{cluster_id}' w ciągu ostatnich {time_interval_hours} godzin i jaka była ich dominująca kategoria opóźnienia (delay_category_label)? Jeśli nie masz danych dla klastra o id '{cluster_id}', odpowiedz: 'Brak danych dla tego klastra'.",
         "placeholders": ["cluster_id"],
         "ground_truth_func": get_gt_bus_cluster_delay_category,
         "time_interval_param": "time_interval_hours"
     },
     "q3_avg_electric_bikes_success_binary": {
-        "template": "Dla wszystkich predykcji bike_binary_prediction_success o wartości PRAWDA w ciągu ostatnich {time_interval_hours} godzin, jaka jest średnia liczba dostępnych rowerów elektrycznych (electric_bikes_available)?",
+        "template": "Pamiętaj, aby uwzględnić wszystkie dostępne dane. Dla wszystkich predykcji bike_binary_prediction_success o wartości PRAWDA w ciągu ostatnich {time_interval_hours} godzin, jaka jest średnia liczba dostępnych rowerów elektrycznych (electric_bikes_available)? Jeśli nie ma dostępnych danych, odpowiedz: 'Brak danych do obliczenia średniej'.",
         "placeholders": [],
         "ground_truth_func": get_gt_avg_electric_bikes_success_binary,
         "time_interval_param": "time_interval_hours"
     },
     "q4_most_common_delay_label_success": {
-        "template": "Jaka jest najczęściej występująca etykieta opóźnienia (delay_category_label) dla autobusów, dla których predykcja sukcesu opóźnienia (delay_category_prediction_success) była pomyślna w ciągu ostatnich {time_interval_hours} godzin, i jaka jest średnia wartość on_time_stop_ratio dla tych autobusów?",
+        "template": "Pamiętaj, aby uwzględnić wszystkie dostępne dane. Jaka jest najczęściej występująca etykieta opóźnienia (delay_category_label) dla autobusów, dla których predykcja sukcesu opóźnienia (delay_category_prediction_success) była pomyślna w ciągu ostatnich {time_interval_hours} godzin, i jaka jest średnia wartość on_time_stop_ratio dla tych autobusów? Jeśli nie ma dostępnych danych, odpowiedz: 'Brak danych do obliczenia statystyk'.",
         "placeholders": [],
         "ground_truth_func": get_gt_most_common_delay_label_success,
         "time_interval_param": "time_interval_hours"
     },
     "q5_weather_low_bike_availability_cluster": {
-        "template": "W jakich warunkach pogodowych (weather_condition) stacje rowerowe o cluster_id równym '{cluster_id}' najczęściej miały niską dostępność rowerów (bikes_available < 5) w ciągu ostatnich {time_interval_hours} godzin?",
+        "template": "Pamiętaj, aby uwzględnić wszystkie dostępne dane. W jakich warunkach pogodowych (weather_condition) stacje rowerowe o cluster_id równym '{cluster_id}' najczęściej miały niską dostępność rowerów (bikes_available < 5) w ciągu ostatnich {time_interval_hours} godzin? Jeśli nie masz danych dla klastra o id '{cluster_id}', odpowiedz: 'Brak danych dla tego klastra'.",
         "placeholders": ["cluster_id"],
         "ground_truth_func": get_gt_weather_low_bike_availability_cluster,
         "time_interval_param": "time_interval_hours"
@@ -669,61 +669,61 @@ QUESTIONS_TEMPLATES = {
         "time_interval_param": "time_interval_hours"
     },
     "q7_humidity_temp_bike_prediction_impact": {
-        "template": "Opisz, jak wilgotność (humidity) i temperatura (temperature) wpływają na prognozowaną liczbę dostępnych rowerów (bike_regression_prediction) dla stacji '{station_name}' w ciągu ostatnich {time_interval_hours} godzin.",
+        "template": "Opisz, jak wilgotność (humidity) i temperatura (temperature) wpływają na prognozowaną liczbę dostępnych rowerów (bike_regression_prediction) dla stacji '{station_name}' w ciągu ostatnich {time_interval_hours} godzin. Jeśli nie masz danych dla stacji o nazwie '{station_name}', odpowiedz: 'Brak danych dla tej stacji'.",
         "placeholders": ["station_name"],
         "ground_truth_func": get_gt_humidity_temp_bike_prediction_impact,
         "time_interval_param": "time_interval_hours"
     },
     "q8_visibility_very_late_buses": {
-        "template": "W jakich warunkach widoczności (visibility_km) autobusy linii '{bus_line_number}' najczęściej doświadczały opóźnień sklasyfikowanych jako 'Very Late' (is_late_label = 'Very Late') w ciągu ostatnich {time_interval_hours} godzin?",
+        "template": "W jakich warunkach widoczności (visibility_km) autobusy linii '{bus_line_number}' najczęściej doświadczały opóźnień sklasyfikowanych jako 'Very Late' (is_late_label = 'Very Late') w ciągu ostatnich {time_interval_hours} godzin? Jeśli nie masz danych dla linii autobusowej '{bus_line_number}', odpowiedz: 'Brak danych dla tej linii'.",
         "placeholders": ["bus_line_number"],
         "ground_truth_func": get_gt_visibility_very_late_buses,
         "time_interval_param": "time_interval_hours"
     },
     "q9_uv_bikes_bus_delay_correlation": {
-        "template": "Czy istnieje trend, że w dniach o wysokim wskaźniku UV (uv_index > 7) stacje rowerowe w klastrze '{cluster_id}' mają większą liczbę dostępnych rowerów manualnych (manual_bikes_available) niż elektrycznych w ciągu ostatnich {time_interval_days} dni? I czy wpływa to na średnie opóźnienie autobusów (average_delay_seconds) w sąsiadujących obszarach (dla tego samego dnia i podobnych warunków pogodowych)?",
+        "template": "Pamiętaj, aby uwzględnić wszystkie dostępne dane. Czy istnieje trend, że w dniach o wysokim wskaźniku UV (uv_index > 7) stacje rowerowe w klastrze '{cluster_id}' mają większą liczbę dostępnych rowerów manualnych (manual_bikes_available) niż elektrycznych w ciągu ostatnich {time_interval_days} dni? I czy wpływa to na średnie opóźnienie autobusów (average_delay_seconds) w sąsiadujących obszarach (dla tego samego dnia i podobnych warunków pogodowych)? Jeśli nie masz danych dla klastra o id '{cluster_id}', odpowiedz: 'Brak danych dla tego klastra'.",
         "placeholders": ["cluster_id"],
         "ground_truth_func": get_gt_uv_bikes_bus_delay_correlation,
         "time_interval_param": "time_interval_days"
     },
     "q10_optimal_hours_bikes_buses": {
-        "template": "W jakich godzinach dobowych (timestamp - godziny), przy niskim zachmurzeniu (cloud < 20), występuje jednocześnie największa dostępność rowerów (bikes_available) i najkrótsze średnie opóźnienia autobusów (average_delay_seconds) w ciągu ostatnich {time_interval_days} dni?",
+        "template": "Pamiętaj, aby uwzględnić wszystkie dostępne dane. W jakich godzinach dobowych (timestamp - godziny), przy niskim zachmurzeniu (cloud < 20), występuje jednocześnie największa dostępność rowerów (bikes_available) i najkrótsze średnie opóźnienia autobusów (average_delay_seconds) w ciągu ostatnich {time_interval_days} dni? Jeśli nie ma dostępnych danych, odpowiedz: 'Brak danych do analizy'.",
         "placeholders": [],
         "ground_truth_func": get_gt_optimal_hours_bikes_buses,
         "time_interval_param": "time_interval_days"
     },
     "q11_top_environmental_factors_bus_delay_success": {
-        "template": "Jakie są trzy główne czynniki środowiskowe (pogoda/zanieczyszczenia), które najbardziej wpływają na prognozowany sukces klasyfikacji opóźnień autobusów (delay_category_prediction_success) w ciągu ostatnich {time_interval_days} dni?",
+        "template": "Pamiętaj, aby uwzględnić wszystkie dostępne dane. Jakie są trzy główne czynniki środowiskowe (pogoda/zanieczyszczenia), które najbardziej wpływają na prognozowany sukces klasyfikacji opóźnień autobusów (delay_category_prediction_success) w ciągu ostatnich {time_interval_days} dni? Jeśli nie ma dostępnych danych, odpowiedz: 'Brak danych do analizy.'.",
         "placeholders": [],
         "ground_truth_func": get_gt_top_environmental_factors_bus_delay_success,
         "time_interval_param": "time_interval_days"
     },
     "q12_cluster_success_comparison_temp": {
-        "template": "Porównaj sukces predykcji klasteryzacji (cluster_prediction_success) dla stacji rowerowych i linii autobusowych w ciągu ostatnich {time_interval_days} dni. Który sektor wykazał wyższy wskaźnik sukcesu i jaka była średnia temperatura (temperature) w tych pomyślnych predykcjach dla każdego sektora?",
+        "template": "Pamiętaj, aby uwzględnić wszystkie dostępne dane. Porównaj sukces predykcji klasteryzacji (cluster_prediction_success) dla stacji rowerowych i linii autobusowych w ciągu ostatnich {time_interval_days} dni. Który sektor wykazał wyższy wskaźnik sukcesu i jaka była średnia temperatura (temperature) w tych pomyślnych predykcjach dla każdego sektora? Jeśli nie ma dostępnych danych, odpowiedz: 'Brak danych do analizy.'.",
         "placeholders": [],
         "ground_truth_func": get_gt_cluster_success_comparison_temp,
         "time_interval_param": "time_interval_days"
     },
     "q13_bike_station_needs_refill": {
-        "template": "Bazując na danych o klastrach stacji rowerowych i prognozach dostępności (bike_regression_prediction), wskaż stację, która w ciągu ostatnich {time_interval_hours} godzin najprawdopodobniej wymagała uzupełnienia rowerów, biorąc pod uwagę bieżące warunki pogodowe (np. bikes_available < 5 i weather_condition jest niesprzyjający).",
+        "template": "Pamiętaj, aby uwzględnić wszystkie dostępne dane. Bazując na danych o klastrach stacji rowerowych i prognozach dostępności (bike_regression_prediction), wskaż stację, która w ciągu ostatnich {time_interval_hours} godzin najprawdopodobniej wymagała uzupełnienia rowerów, biorąc pod uwagę bieżące warunki pogodowe (np. bikes_available < 5 i weather_condition jest niesprzyjający). Jeśli nie ma dostępnych danych, odpowiedz: 'Brak danych do analizy.'.",
         "placeholders": [],
         "ground_truth_func": get_gt_bike_station_needs_refill,
         "time_interval_param": "time_interval_hours"
     },
     "q14_bus_routes_high_delay_heavy_rain": {
-        "template": "Które trasy autobusowe (bus_line_number) są najbardziej podatne na duże opóźnienia (average_delay_seconds > 300 sekund) w dniach o dużym opadzie deszczu (precip_mm > 5), zgodnie z klasyfikacjami ML w ciągu ostatnich {time_interval_days} dni?",
+        "template": "Pamiętaj, aby uwzględnić wszystkie dostępne dane. Które trasy autobusowe (bus_line_number) są najbardziej podatne na duże opóźnienia (average_delay_seconds > 300 sekund) w dniach o dużym opadzie deszczu (precip_mm > 5), zgodnie z klasyfikacjami ML w ciągu ostatnich {time_interval_days} dni? Jeśli nie ma dostępnych danych, odpowiedz: 'Brak danych do analizy.'.",
         "placeholders": [],
         "ground_truth_func": get_gt_bus_routes_high_delay_heavy_rain,
         "time_interval_param": "time_interval_days"
     },
     "q15_pollution_bike_rental_correlation": {
-        "template": "Czy istnieje wzorzec, w którym wzrost zanieczyszczeń powietrza (np. fine_particles_pm2_5) koreluje ze spadkiem liczby wypożyczeń rowerów (wzrost docks_available)? Jakie są średnie stężenia PM2.5 w dniach, gdy docks_available rosło gwałtownie w ciągu ostatnich {time_interval_days} dni?",
+        "template": "Pamiętaj, aby uwzględnić wszystkie dostępne dane. Czy istnieje wzorzec, w którym wzrost zanieczyszczeń powietrza (np. fine_particles_pm2_5) koreluje ze spadkiem liczby wypożyczeń rowerów (wzrost docks_available)? Jakie są średnie stężenia PM2.5 w dniach, gdy docks_available rosło gwałtownie w ciągu ostatnich {time_interval_days} dni? Jeśli nie ma dostępnych danych, odpowiedz: 'Brak danych do analizy.'.",
         "placeholders": [],
         "ground_truth_func": get_gt_pollution_bike_rental_correlation,
         "time_interval_param": "time_interval_days"
     },
     "q16_optimization_strategies_summary": {
-        "template": "Jakie strategie optymalizacji tras autobusowych lub rozmieszczenia rowerów miejskich można by zasugerować, bazując na analizie sukcesu predykcji klasteryzacji i klasyfikacji ML oraz wpływie warunków pogodowych na opóźnienia i dostępność, w oparciu o dane z ostatnich {time_interval_days} dni? Podaj ogólne wnioski.",
+        "template": "Pamiętaj, aby uwzględnić wszystkie dostępne dane. Jakie strategie optymalizacji tras autobusowych lub rozmieszczenia rowerów miejskich można by zasugerować, bazując na analizie sukcesu predykcji klasteryzacji i klasyfikacji ML oraz wpływie warunków pogodowych na opóźnienia i dostępność, w oparciu o dane z ostatnich {time_interval_days} dni? Podaj ogólne wnioski. Jeśli nie ma dostępnych danych, odpowiedz: 'Brak danych do analizy.'.",
         "placeholders": [],
         "ground_truth_func": get_gt_optimization_strategies_summary,
         "time_interval_param": "time_interval_days"
